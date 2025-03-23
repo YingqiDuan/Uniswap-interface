@@ -25,6 +25,10 @@ const externalContracts = {
       address: process.env.NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS as string,
       abi: UniswapV2RouterABI,
     },
+    UniswapV2Pair: {
+      // 不需要地址因为我们会直接使用从Factory获取的池子地址
+      abi: UniswapV2PairABI,
+    },
     WETH: {
       address: process.env.NEXT_PUBLIC_WETH_ADDRESS as string,
       abi: ERC20ABI,

@@ -30,6 +30,7 @@ const scaffoldConfig = {
   rpcOverrides: {
     // Example:
     // [chains.mainnet.id]: "https://mainnet.buidlguidl.com",
+    [chains.sepolia.id]: process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA || `https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY}`,
   },
 
   // This is ours WalletConnect's default project ID.
