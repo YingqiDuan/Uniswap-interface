@@ -1,24 +1,29 @@
-<<<<<<< HEAD
-# 🏗 Scaffold-ETH 2
+# 🦄 Uniswap Interface
 
 <h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
+  A custom implementation of Uniswap V2 interface built with Scaffold-ETH 2
 </h4>
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+This project provides a modern, responsive interface for interacting with Uniswap V2 smart contracts. It enables users to view pool information, add/remove liquidity, and execute token swaps with an intuitive user experience.
 
-⚙️ Built using NextJS, RainbowKit, Foundry, Wagmi, Viem, and Typescript.
+## ✨ Features
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+- 🌊 **Pool Management**: View detailed information about liquidity pools including reserves, price, and constant product value
+- 🔄 **Token Swapping**: Swap tokens with real-time price impact calculation and slippage protection
+- 💧 **Liquidity Provision**: Add and remove liquidity from pools with customizable slippage tolerance
+- 📊 **Visual Analytics**: View reserve curves and swap history with interactive charts
+- 🔍 **Pool Exploration**: Browse and search for available pools with clear distinction between real and simulated pools
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+## 🛠️ Built With
 
-## Requirements
+- NextJS, React, and TypeScript for the frontend
+- Wagmi, RainbowKit, and Viem for Web3 interactions
+- Foundry for smart contract development and testing
+- Tailwind CSS and DaisyUI for styling
+
+## 🚀 Getting Started
+
+### Prerequisites
 
 Before you begin, you need to install the following tools:
 
@@ -26,59 +31,59 @@ Before you begin, you need to install the following tools:
 - Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
 - [Git](https://git-scm.com/downloads)
 
-## Quickstart
+### Installation
 
-To get started with Scaffold-ETH 2, follow the steps below:
+1. Clone the repository:
 
-1. Install dependencies if it was skipped in CLI:
-
+```bash
+git clone https://github.com/yourusername/uniswap-interface.git
+cd uniswap-interface
 ```
-cd my-dapp-example
+
+2. Install dependencies:
+
+```bash
 yarn install
 ```
 
-2. Run a local network in the first terminal:
+3. Run a local network in the first terminal:
 
-```
+```bash
 yarn chain
 ```
 
-This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
+This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development.
 
-3. On a second terminal, deploy the test contract:
+4. On a second terminal, deploy the test contracts:
 
-```
+```bash
 yarn deploy
 ```
 
-This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
+This command deploys the Uniswap V2 contracts to the local network. The contracts include the factory, router, and test tokens.
 
-4. On a third terminal, start your NextJS app:
+5. On a third terminal, start your NextJS app:
 
-```
+```bash
 yarn start
 ```
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
+Visit your app on: `http://localhost:3000`
 
-Run smart contract test with `yarn foundry:test`
+## 🧪 Testing
 
-- Edit your smart contracts in `packages/foundry/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/foundry/script`
+Run smart contract tests with:
 
+```bash
+yarn foundry:test
+```
 
-## Documentation
+## 📝 Notes
 
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
+- This interface is configured to work with the Sepolia testnet by default
+- For real operations, ensure your wallet is connected to the correct network
+- Test tokens (TEST/WETH) are available for experimenting with the interface
 
-To know more about its features, check out our [website](https://scaffoldeth.io).
+## 🤝 Contributing
 
-## Contributing to Scaffold-ETH 2
-
-We welcome contributions to Scaffold-ETH 2!
-
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
-=======
-# Uniswap-interface
->>>>>>> 012185d6767ec362bf980d81b41016224207eb98
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/yourusername/uniswap-interface/issues) for open issues or create a new one.
