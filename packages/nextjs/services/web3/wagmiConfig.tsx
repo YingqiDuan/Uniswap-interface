@@ -12,7 +12,7 @@ export const enabledChains = targetNetworks.find((network: Chain) => network.id 
   ? targetNetworks
   : ([...targetNetworks, mainnet] as const);
 
-// 打印当前环境变量
+// Print current environment variables
 console.log(`Alchemy API Key: ${scaffoldConfig.alchemyApiKey}`);
 console.log(`Target Networks: ${JSON.stringify(targetNetworks.map(n => n.name))}`);
 console.log(`RPC Overrides: ${JSON.stringify(scaffoldConfig.rpcOverrides)}`);
@@ -26,17 +26,17 @@ export const wagmiConfig = createConfig({
 
     const rpcOverrideUrl = (scaffoldConfig.rpcOverrides as ScaffoldConfig["rpcOverrides"])?.[chain.id];
     if (rpcOverrideUrl) {
-      console.log(`使用RPC覆盖URL: ${rpcOverrideUrl} 作为chainId=${chain.id}的主要RPC`);
+      console.log(`Using RPC override URL: ${rpcOverrideUrl} as primary RPC for chainId=${chain.id}`);
       rpcFallbacks = [http(rpcOverrideUrl), http()];
     } else {
       const alchemyHttpUrl = getAlchemyHttpUrl(chain.id);
       if (alchemyHttpUrl) {
         const isUsingDefaultKey = scaffoldConfig.alchemyApiKey === DEFAULT_ALCHEMY_API_KEY;
-        console.log(`使用Alchemy URL: ${alchemyHttpUrl} 作为chainId=${chain.id}的RPC${isUsingDefaultKey ? "(使用默认API密钥)" : ""}`);
+        console.log(`Using Alchemy URL: ${alchemyHttpUrl} as RPC for chainId=${chain.id}${isUsingDefaultKey ? " (using default API key)" : ""}`);
         // If using default Scaffold-ETH 2 API key, we prioritize the default RPC
         rpcFallbacks = isUsingDefaultKey ? [http(), http(alchemyHttpUrl)] : [http(alchemyHttpUrl), http()];
       } else {
-        console.log(`未找到chainId=${chain.id}的Alchemy URL，使用默认RPC`);
+        console.log(`No Alchemy URL found for chainId=${chain.id}, using default RPC`);
       }
     }
 

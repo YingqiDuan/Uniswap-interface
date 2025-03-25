@@ -18,7 +18,7 @@ export type Pool = {
   isRealPool: boolean;
 };
 
-// 回退使用的测试池
+// Fallback test pools
 const MOCK_POOLS: Pool[] = [
   {
     address: "0x123mock1" as `0x${string}`,
@@ -53,7 +53,7 @@ const MOCK_POOLS: Pool[] = [
     fee: 0.003, // 0.3%
     isRealPool: false,
   },
-  // 其他模拟池
+  // Other mock pools
   {
     address: "0x123mock4" as `0x${string}`,
     token0: "0x4444444444444444444444444444444444444444" as `0x${string}`,
@@ -78,7 +78,7 @@ const MOCK_POOLS: Pool[] = [
   },
 ];
 
-// 我们在Sepolia上真实创建的流动性池
+// Real liquidity pools we created on Sepolia
 const REAL_POOLS: Pool[] = [
   {
     address: "0xCd40Fb4Bae9A7e2240975A590E23dA8a5AE3df67" as `0x${string}`, // TEST/WETH Pair
@@ -86,8 +86,8 @@ const REAL_POOLS: Pool[] = [
     token1: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9" as `0x${string}`, // WETH
     token0Symbol: "TEST",
     token1Symbol: "WETH",
-    reserve0: BigInt(0), // 初始化为0，等待API更新
-    reserve1: BigInt(0), // 初始化为0，等待API更新
+    reserve0: BigInt(0), // Initialize to 0, wait for API update
+    reserve1: BigInt(0), // Initialize to 0, wait for API update
     fee: 0.003, // 0.3%
     isRealPool: true,
   }
@@ -104,17 +104,17 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
   const [isLoadingError, setIsLoadingError] = useState(false);
   const { targetNetwork } = useTargetNetwork();
 
-  // 从环境变量获取Uniswap Factory地址
+  // Get Uniswap Factory address from environment variables
   const factoryAddress = process.env.NEXT_PUBLIC_UNISWAP_FACTORY_ADDRESS as `0x${string}` || 
                         "0x2f3f73153388bfc11d5ddcf6e26aef613b4c54ff" as `0x${string}`;
   
-  console.log(`使用Factory地址: ${factoryAddress}`);
-  console.log(`当前网络ID: ${targetNetwork.id}`);
+  console.log(`Using Factory address: ${factoryAddress}`);
+  console.log(`Current network ID: ${targetNetwork.id}`);
   
-  // 获取ABI
+  // Get ABI
   const factoryAbi = externalContracts[11155111].UniswapV2Factory.abi;
   
-  // 获取Uniswap工厂合约中的所有池数量
+  // Get the number of all pools in the Uniswap factory contract
   const { data: pairsLength, isError: isFactoryError } = useReadContract({
     address: factoryAddress,
     abi: factoryAbi,
@@ -122,28 +122,28 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
     chainId: targetNetwork.id,
   });
 
-  // 获取池列表和详细信息
+  // Get pool list and detailed information
   useEffect(() => {
     const fetchPools = async () => {
       setIsLoading(true);
       try {
-        // 获取真实池子数据
+        // Get real pool data
         const realPoolsWithData = await Promise.all(
           REAL_POOLS.map(async (pool) => {
             try {
-              // 尝试从API获取池子数据
-              console.log(`正在获取池子 ${pool.token0Symbol}/${pool.token1Symbol} 的数据...`);
+              // Try to get pool data from API
+              console.log(`Getting data for pool ${pool.token0Symbol}/${pool.token1Symbol}...`);
               const response = await fetch(`/api/getPairData?pair=${pool.address}`);
               
               if (!response.ok) {
-                console.warn(`获取池子 ${pool.address} 数据失败: ${response.statusText}`);
-                return { ...pool, isRealPool: true }; // 保持原始数据，但标记为真实池子
+                console.warn(`Failed to get data for pool ${pool.address}: ${response.statusText}`);
+                return { ...pool, isRealPool: true }; // Keep original data, but mark as real pool
               }
               
               const pairData = await response.json();
-              console.log("获取到的池子数据:", pairData);
+              console.log("Pool data received:", pairData);
               
-              // 更新池子数据
+              // Update pool data
               return {
                 ...pool,
                 reserve0: BigInt(pairData.reserve0 || 0),
@@ -151,29 +151,29 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
                 isRealPool: true
               };
             } catch (error) {
-              console.error(`获取池子 ${pool.address} 数据时出错:`, error);
-              return { ...pool, isRealPool: true }; // 保持原始数据，但标记为真实池子
+              console.error(`Error getting data for pool ${pool.address}:`, error);
+              return { ...pool, isRealPool: true }; // Keep original data, but mark as real pool
             }
           })
         );
         
-        // 构建所有池子列表
+        // Build the complete pool list
         const allPools = [...realPoolsWithData, ...MOCK_POOLS.map(pool => ({...pool, isRealPool: false}))];
         
-        // 过滤有效的池子
+        // Filter valid pools
         const validRealPools = realPoolsWithData.filter(
           pool => pool.reserve0 !== undefined && pool.reserve1 !== undefined
         );
         
-        console.log(`找到 ${validRealPools.length} 个有效的真实池子，储备:`);
+        console.log(`Found ${validRealPools.length} valid real pools, reserves:`);
         validRealPools.forEach(pool => {
           console.log(`${pool.token0Symbol}/${pool.token1Symbol}: ${formatReserve(pool.reserve0, pool.token0Symbol)} ${pool.token0Symbol}, ${formatReserve(pool.reserve1, pool.token1Symbol)} ${pool.token1Symbol}`);
         });
         
-        // 更新状态
+        // Update state
         setPools(allPools);
       } catch (error) {
-        console.error("获取池子数据失败:", error);
+        console.error("Failed to get pool data:", error);
       } finally {
         setIsLoading(false);
       }
@@ -182,71 +182,71 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
     fetchPools();
   }, [factoryAddress, pairsLength, targetNetwork.id, isFactoryError]);
 
-  // 添加日志来检查每个池子的isRealPool属性
+  // Add logs to check isRealPool property for each pool
   useEffect(() => {
     if (!isLoading && pools.length > 0) {
-      console.log("所有池子的isRealPool属性:");
+      console.log("isRealPool property for all pools:");
       pools.forEach(pool => {
         console.log(`${pool.token0Symbol}/${pool.token1Symbol}: isRealPool=${pool.isRealPool}`);
       });
     }
   }, [pools, isLoading]);
 
-  // 定期更新池子数据
+  // Periodically update pool data
   useEffect(() => {
-    // 只有在有选中池子且不在加载状态时更新
+    // Only update when there's a selected pool and not in loading state
     if (!selectedPool || isLoading) return undefined;
     
     const updateInterval = setInterval(() => {
       if (selectedPool) {
         updateSelectedPoolReserves();
       }
-    }, 60000); // 每60秒更新一次
+    }, 30000); // Update every 30 seconds
     
     return () => clearInterval(updateInterval);
   }, [selectedPool, isLoading]);
   
-  // 更新选中池子的储备金额
+  // Update selected pool reserves
   const updateSelectedPoolReserves = async () => {
     if (!selectedPool) return;
     
     try {
-      console.log(`更新池子 ${selectedPool.address} 的储备金额`);
+      console.log(`Updating reserves for pool ${selectedPool.address}`);
       const pairDataResponse = await fetch(`/api/getPairData?pair=${selectedPool.address}`);
       if (!pairDataResponse.ok) {
-        console.error("获取池子数据失败:", await pairDataResponse.text());
+        console.error("Failed to get pool data:", await pairDataResponse.text());
         return;
       }
       
       const pairData = await pairDataResponse.json();
       
       if (pairData && pairData.reserve0 !== undefined && pairData.reserve1 !== undefined) {
-        console.log(`获取到新的储备金额: reserve0=${pairData.reserve0}, reserve1=${pairData.reserve1}`);
+        console.log(`New reserves received: reserve0=${pairData.reserve0}, reserve1=${pairData.reserve1}`);
         setSelectedPool({
           ...selectedPool,
           reserve0: BigInt(pairData.reserve0),
           reserve1: BigInt(pairData.reserve1),
         });
       } else {
-        console.error("获取到的池子数据不完整:", pairData);
+        console.error("Received incomplete pool data:", pairData);
       }
     } catch (error) {
-      console.error("更新池子储备金额失败:", error);
+      console.error("Failed to update pool reserves:", error);
     }
   };
 
-  // 格式化储备金额显示
+  // Format reserve amount for display
   const formatReserve = (amount: bigint, symbol: string) => {
     try {
-      console.log(`格式化储备金额 [${symbol}]: ${amount.toString()} (${typeof amount})`);
+      console.log(`Formatting reserve amount [${symbol}]: ${amount.toString()} (${typeof amount})`);
       
       if (amount === BigInt(0)) {
-        console.log(`${symbol}储备为0，直接返回"0"`);
+        console.log(`${symbol} reserve is 0, returning "0"`);
         return "0";
       }
       
-      let divisor = BigInt(10 ** 18); // 默认18位小数
-      let decimals = 4; // 默认显示4位小数
+      let divisor = BigInt(10 ** 18); // Default 18 decimal places
+      let decimals = 4; // Default display 4 decimal places
       
       if (symbol === "WBTC") {
         divisor = BigInt(10 ** 8);
@@ -256,7 +256,7 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
         decimals = 2;
       } else if (symbol === "WETH") {
         divisor = BigInt(10 ** 18);
-        // 增加WETH的小数位数，以确保小数值能够正确显示
+        // Increase WETH decimal places to ensure small value can be displayed correctly
         decimals = 8;
       } else if (symbol === "TEST") {
         divisor = BigInt(10 ** 18);
@@ -266,12 +266,12 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
       const wholePart = amount / divisor;
       const fractionPart = amount % divisor;
       
-      // 对于非常小的值，确保不会四舍五入为0
+      // For very small values, ensure not rounded to 0
       let result;
       if (wholePart === BigInt(0) && fractionPart > BigInt(0)) {
-        // 对于小于1的值，保留更多小数位
+        // For values less than 1, retain more decimal places
         const fractionStr = fractionPart.toString().padStart(Number(Math.log10(Number(divisor))), '0');
-        // 找到第一个非0数字的位置
+        // Find position of first non-0 digit
         let firstNonZero = 0;
         for (let i = 0; i < fractionStr.length; i++) {
           if (fractionStr[i] !== '0') {
@@ -279,36 +279,36 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
             break;
           }
         }
-        // 确保至少显示3位有效数字
+        // Ensure at least 3 significant digits
         const significantDigits = Math.max(decimals, firstNonZero + 3);
         const floatValue = Number(fractionPart) / Number(divisor);
         result = floatValue.toFixed(significantDigits);
       } else {
-        // 正常情况下的格式化
+        // Normal formatting
         const floatValue = Number(wholePart) + Number(fractionPart) / Number(divisor);
         result = floatValue.toFixed(decimals);
       }
       
-      console.log(`${symbol}最终格式化结果: ${result}`);
+      console.log(`${symbol} final formatted result: ${result}`);
       return result;
     } catch (error) {
-      console.error(`格式化储备金额时出错:`, error);
+      console.error(`Error formatting reserve amount:`, error);
       return "Error";
     }
   };
 
   return (
     <div className="flex flex-col gap-2 w-full">
-      <div className="text-lg font-semibold mb-2">选择交易池</div>
+      <div className="text-lg font-semibold mb-2">Select trading pool</div>
       
       {isLoading ? (
         <div className="p-4 text-center">
           <span className="loading loading-spinner"></span>
-          <p>加载池子列表...</p>
+          <p>Loading pool list...</p>
         </div>
       ) : isLoadingError ? (
         <div className="p-4 text-center text-error">
-          <p>加载失败，请刷新页面重试</p>
+          <p>Failed to load, please refresh the page</p>
         </div>
       ) : (
         <div className="grid gap-2">
@@ -333,29 +333,29 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
                   <div className="font-semibold flex items-center gap-2">
                     {pool.token0Symbol}/{pool.token1Symbol}
                     {isRealPool && (
-                      <span className="badge badge-success badge-sm">真实池子</span>
+                      <span className="badge badge-success badge-sm">Real pool</span>
                     )}
                     {!isRealPool && (
-                      <span className="badge badge-warning badge-sm">模拟池子</span>
+                      <span className="badge badge-warning badge-sm">Mock pool</span>
                     )}
                   </div>
-                  <div className="text-sm opacity-70">费率: {pool.fee * 100}%</div>
+                  <div className="text-sm opacity-70">Fee: {pool.fee * 100}%</div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mt-2">
                   <div>
-                    <div className="text-xs opacity-70">{pool.token0Symbol} 储备</div>
+                    <div className="text-xs opacity-70">{pool.token0Symbol} reserve</div>
                     <div className="font-mono">{reserve0Formatted}</div>
                   </div>
                   <div>
-                    <div className="text-xs opacity-70">{pool.token1Symbol} 储备</div>
+                    <div className="text-xs opacity-70">{pool.token1Symbol} reserve</div>
                     <div className="font-mono">{reserve1Formatted}</div>
                   </div>
                 </div>
                 
-                {/* 添加调试信息 */}
+                {/* Add debug information */}
                 <div className="mt-2 text-xs opacity-50 font-mono">
-                  <div>地址: {pool.address.slice(0, 8)}...{pool.address.slice(-6)}</div>
+                  <div>Address: {pool.address.slice(0, 8)}...{pool.address.slice(-6)}</div>
                   <div>isRealPool: {isRealPool.toString()}</div>
                 </div>
               </div>

@@ -53,10 +53,10 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
     const reserve0 = selectedPool.reserve0;
     const reserve1 = selectedPool.reserve1;
 
-    // 如果任一储备为零，显示默认模拟曲线而不是真实曲线
+    // If either reserve is zero, display a default simulation curve instead of the real curve
     if (reserve0 === BigInt(0) || reserve1 === BigInt(0)) {
-      console.log("检测到零储备，使用默认模拟值绘制曲线");
-      // 使用默认值绘制曲线
+      console.log("Zero reserves detected, drawing curve with default simulation values");
+      // Use default values to draw the curve
       const defaultReserve0 = selectedPool.token0Symbol === "WETH" ? 
         BigInt(10) * BigInt(10 ** 18) : 
         BigInt(1000) * BigInt(10 ** 18);
@@ -68,11 +68,11 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
       return;
     }
 
-    // 正常情况：使用实际储备
+    // Normal case: use actual reserves
     generateChartData(reserve0, reserve1);
   }, [selectedPool]);
 
-  // 将曲线生成逻辑抽取为单独函数
+  // Extract curve generation logic into a separate function
   const generateChartData = (reserve0: bigint, reserve1: bigint) => {
     // Calculate constant k = x * y
     const k = reserve0 * reserve1;
@@ -107,10 +107,10 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
 
       for (let i = 0; i <= numPoints; i++) {
         const x = minX + step * i;
-        // 正确的公式是 y = k / (x * scale0)
-        // 因为k是原始值的乘积，而x已经是经过缩放后的人类可读值
-        // 我们需要先将x转回原始值单位(x * scale0)，然后计算y = k / (x * scale0)
-        // 最后再将y转为人类可读值（除以scale1）
+        // The correct formula is y = k / (x * scale0)
+        // Since k is the product of the original values, and x is already in human-readable units
+        // We need to convert x back to original units (x * scale0), then calculate y = k / (x * scale0)
+        // Finally convert y to human-readable units (divide by scale1)
         const y = Number(k) / (Number(x) * Number(scale0)) / Number(scale1);
         points.push({ x, y });
       }
@@ -125,7 +125,7 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
       labels: points.map(point => point.x),
       datasets: [
         {
-          label: `${selectedPool?.token1Symbol} 数量`,
+          label: `${selectedPool?.token1Symbol} Amount`,
           data: points.map(point => point.y),
           borderColor: "rgba(53, 162, 235, 1)",
           backgroundColor: "rgba(53, 162, 235, 0.2)",
@@ -139,9 +139,9 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
   if (!selectedPool || !chartData) {
     return (
       <div className="card bg-base-100 shadow-xl p-4">
-        <h2 className="text-2xl font-bold mb-4">储备曲线</h2>
+        <h2 className="text-2xl font-bold mb-4">Reserve Curve</h2>
         <div className="flex justify-center items-center h-64">
-          <p className="text-center text-base-content">选择一个池子查看储备曲线</p>
+          <p className="text-center text-base-content">Select a pool to view reserve curve</p>
         </div>
       </div>
     );
@@ -169,15 +169,15 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
       x: {
         title: {
           display: true,
-          text: `${selectedPool.token0Symbol} 数量`,
+          text: `${selectedPool.token0Symbol} Amount`,
         },
         ticks: {
           callback: function(value: any) {
-            // 根据代币类型调整小数位显示
+            // Adjust decimal places based on token type
             if (value < 0.1) {
-              return value.toFixed(8); // 显示非常小的值
+              return value.toFixed(8); // Display very small values
             } else if (value < 1) {
-              return value.toFixed(6); // 显示小值
+              return value.toFixed(6); // Display small values
             } else if (value >= 1000) {
               return (value / 1000).toFixed(2) + 'k';
             } else {
@@ -193,15 +193,15 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
       y: {
         title: {
           display: true,
-          text: `${selectedPool.token1Symbol} 数量`,
+          text: `${selectedPool.token1Symbol} Amount`,
         },
         ticks: {
           callback: function(value: any) {
-            // 根据代币类型调整小数位显示
+            // Adjust decimal places based on token type
             if (value < 0.1) {
-              return value.toFixed(8); // 显示非常小的值
+              return value.toFixed(8); // Display very small values
             } else if (value < 1) {
-              return value.toFixed(6); // 显示小值
+              return value.toFixed(6); // Display small values
             } else if (value >= 1000) {
               return (value / 1000).toFixed(2) + 'k';
             } else {
@@ -237,7 +237,7 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
       },
       title: {
         display: true,
-        text: `恒定乘积曲线 (x * y = k)`,
+        text: `Constant Product Curve (x * y = k)`,
       },
       legend: {
         display: false,
@@ -262,19 +262,19 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
 
   return (
     <div className="card bg-base-100 shadow-xl p-4">
-      <h2 className="text-2xl font-bold mb-4">储备曲线</h2>
+      <h2 className="text-2xl font-bold mb-4">Reserve Curve</h2>
       <div className="relative h-64">
         <Line data={chartData} options={options} />
         <PointAnnotation />
       </div>
       <div className="mt-4 text-center text-sm">
-        <p>当前储备: {
+        <p>Current Reserves: {
           currentPoint.x < 0.1 
             ? currentPoint.x.toFixed(8) 
             : currentPoint.x < 1 
               ? currentPoint.x.toFixed(6) 
               : currentPoint.x.toFixed(4)
-        } {selectedPool.token0Symbol} 和 {
+        } {selectedPool.token0Symbol} and {
           currentPoint.y < 0.1 
             ? currentPoint.y.toFixed(8) 
             : currentPoint.y < 1 

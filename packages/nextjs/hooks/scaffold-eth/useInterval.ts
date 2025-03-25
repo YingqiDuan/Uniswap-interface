@@ -1,19 +1,19 @@
 import { useEffect, useRef } from "react";
 
 /**
- * 使用setInterval的React钩子，支持在组件卸载时自动清除。
- * @param callback 要定期执行的函数
- * @param delay 执行间隔的毫秒数，如果为null则不执行
+ * React hook that uses setInterval with automatic cleanup when the component unmounts.
+ * @param callback Function to execute periodically
+ * @param delay Milliseconds between executions, if null execution is disabled
  */
 export const useInterval = (callback: () => void, delay: number | null): void => {
   const savedCallback = useRef<() => void>();
 
-  // 保存新的回调函数
+  // Save the new callback
   useEffect(() => {
     savedCallback.current = callback;
   }, [callback]);
 
-  // 设置interval
+  // Set up the interval
   useEffect(() => {
     const tick = () => {
       if (savedCallback.current) {

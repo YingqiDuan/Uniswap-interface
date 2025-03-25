@@ -3,16 +3,16 @@ import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
 import externalContracts from '~~/contracts/externalContracts';
 
-// 获取环境变量中的Alchemy API Key
+// Get Alchemy API Key from environment variables
 const alchemyApiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || 'acn7zdrU5xIrMMxfS1Hu9v-SEcEy_geV';
 
-// 创建公共客户端连接，使用Alchemy API
+// Create public client connection using Alchemy API
 const publicClient = createPublicClient({
   chain: sepolia,
   transport: http(`https://eth-sepolia.g.alchemy.com/v2/${alchemyApiKey}`)
 });
 
-// ERC20代币ABI
+// ERC20 token ABI
 const ERC20ABI = [
   {
     "inputs": [],
@@ -32,20 +32,20 @@ const ERC20ABI = [
 
 export async function GET(request: NextRequest) {
   try {
-    // 获取查询参数
+    // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const pair = searchParams.get('pair');
 
     if (!pair) {
-      return Response.json({ error: '缺少必要参数' }, { status: 400 });
+      return Response.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    console.log(`尝试获取池子 ${pair} 的数据`);
+    console.log(`Attempting to get data for pool ${pair}`);
 
-    // 获取Uniswap Pair ABI
+    // Get Uniswap Pair ABI
     const pairAbi = externalContracts[11155111].UniswapV2Pair.abi;
 
-    // 并行调用合约方法获取池子信息
+    // Parallel call contract methods to get pool information
     const [token0, token1, reserves] = await Promise.all([
       publicClient.readContract({
         address: pair as `0x${string}`,
@@ -64,17 +64,17 @@ export async function GET(request: NextRequest) {
       }) as Promise<[bigint, bigint, number]>
     ]);
 
-    // 详细记录所有信息
-    console.log(`获取到池子 ${pair} 的代币信息:`);
-    console.log(`- token0 地址: ${token0}`);
-    console.log(`- token1 地址: ${token1}`);
-    console.log(`- reserve0 (原始BigInt): ${reserves[0]}`);
-    console.log(`- reserve0 (转换为数字): ${Number(reserves[0])}`);
-    console.log(`- reserve1 (原始BigInt): ${reserves[1]}`);
-    console.log(`- reserve1 (转换为数字): ${Number(reserves[1])}`);
+    // Log detailed information
+    console.log(`Retrieved token information for pool ${pair}:`);
+    console.log(`- token0 address: ${token0}`);
+    console.log(`- token1 address: ${token1}`);
+    console.log(`- reserve0 (original BigInt): ${reserves[0]}`);
+    console.log(`- reserve0 (converted to number): ${Number(reserves[0])}`);
+    console.log(`- reserve1 (original BigInt): ${reserves[1]}`);
+    console.log(`- reserve1 (converted to number): ${Number(reserves[1])}`);
     console.log(`- blockTimestampLast: ${reserves[2]}`);
 
-    // 获取代币符号
+    // Get token symbols
     let token0Symbol = "Unknown";
     let token1Symbol = "Unknown";
     let token0Decimals = 18;
@@ -93,9 +93,9 @@ export async function GET(request: NextRequest) {
         functionName: 'decimals',
       }) as number;
       
-      console.log(`获取到代币0符号: ${token0Symbol}, 小数位: ${token0Decimals}`);
+      console.log(`Retrieved token0 symbol: ${token0Symbol}, decimal places: ${token0Decimals}`);
     } catch (error) {
-      console.error('获取token0信息失败:', error);
+      console.error('Failed to retrieve token0 information:', error);
     }
     
     try {
@@ -111,12 +111,12 @@ export async function GET(request: NextRequest) {
         functionName: 'decimals',
       }) as number;
       
-      console.log(`获取到代币1符号: ${token1Symbol}, 小数位: ${token1Decimals}`);
+      console.log(`Retrieved token1 symbol: ${token1Symbol}, decimal places: ${token1Decimals}`);
     } catch (error) {
-      console.error('获取token1信息失败:', error);
+      console.error('Failed to retrieve token1 information:', error);
     }
 
-    // 返回合并的数据
+    // Return merged data
     const result = {
       token0,
       token1,
@@ -129,11 +129,11 @@ export async function GET(request: NextRequest) {
       blockTimestampLast: reserves[2]
     };
     
-    console.log(`返回池子 ${pair} 的完整JSON数据:`);
+    console.log(`Returning complete JSON data for pool ${pair}:`);
     console.log(JSON.stringify(result, null, 2));
     return Response.json(result);
   } catch (error) {
-    console.error('获取池子详情失败:', error);
-    return Response.json({ error: '获取池子详情失败', details: error }, { status: 500 });
+    console.error('Failed to retrieve pool details:', error);
+    return Response.json({ error: 'Failed to retrieve pool details', details: error }, { status: 500 });
   }
 } 

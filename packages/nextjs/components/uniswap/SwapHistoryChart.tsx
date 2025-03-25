@@ -15,7 +15,7 @@ import {
 } from 'chart.js';
 import { type Pool } from './PoolSelector';
 
-// 注册Chart.js组件
+// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -26,18 +26,18 @@ ChartJS.register(
   Legend
 );
 
-// 模拟交易历史数据生成
+// Generate simulated trading history data
 const generateMockSwapHistory = (pool: Pool | null) => {
   if (!pool) return { labels: [], datasets: [] };
   
-  // 生成最近30天的日期标签
+  // Generate date labels for the last 30 days
   const labels = Array.from({ length: 30 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - (29 - i));
     return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
   });
   
-  // 基于池子特征生成随机但相对合理的数据
+  // Generate random but relatively reasonable data based on pool characteristics
   const baseVolume = pool.token0Symbol === 'WBTC' ? 0.5 :
                      pool.token0Symbol === 'ETH' ? 10 : 1000;
   
@@ -46,12 +46,12 @@ const generateMockSwapHistory = (pool: Pool | null) => {
   });
   
   const priceData = labels.map((_, i) => {
-    // 创建价格趋势
+    // Create price trend
     const trendFactor = Math.sin(i / 5) * 0.1;
     const randomFactor = (Math.random() - 0.5) * 0.05;
     const priceFactor = 1 + trendFactor + randomFactor;
     
-    // 基于token对计算合理的价格
+    // Calculate reasonable price based on token pair
     if (pool.token0Symbol === 'ETH' && pool.token1Symbol === 'USDC') {
       return 2000 * priceFactor;
     } else if (pool.token0Symbol === 'WBTC' && pool.token1Symbol === 'ETH') {
@@ -65,14 +65,14 @@ const generateMockSwapHistory = (pool: Pool | null) => {
     labels,
     datasets: [
       {
-        label: '交易量',
+        label: 'Volume',
         data: volumeData,
         borderColor: 'rgba(75, 192, 192, 1)',
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         yAxisID: 'y',
       },
       {
-        label: `${pool.token0Symbol}/${pool.token1Symbol} 价格`,
+        label: `${pool.token0Symbol}/${pool.token1Symbol} Price`,
         data: priceData,
         borderColor: 'rgba(255, 99, 132, 1)',
         backgroundColor: 'rgba(255, 99, 132, 0.2)',
@@ -107,7 +107,7 @@ export const SwapHistoryChart: React.FC<SwapHistoryChartProps> = ({ selectedPool
       },
       title: {
         display: true,
-        text: selectedPool ? `${selectedPool.token0Symbol}/${selectedPool.token1Symbol} 交易历史` : '交易历史',
+        text: selectedPool ? `${selectedPool.token0Symbol}/${selectedPool.token1Symbol} Trading History` : 'Trading History',
       },
     },
     scales: {
@@ -117,7 +117,7 @@ export const SwapHistoryChart: React.FC<SwapHistoryChartProps> = ({ selectedPool
         position: 'left' as const,
         title: {
           display: true,
-          text: '交易量',
+          text: 'Volume',
         }
       },
       y1: {
@@ -126,7 +126,7 @@ export const SwapHistoryChart: React.FC<SwapHistoryChartProps> = ({ selectedPool
         position: 'left' as const,
         title: {
           display: true,
-          text: '价格',
+          text: 'Price',
         },
         grid: {
           drawOnChartArea: false,
@@ -136,12 +136,12 @@ export const SwapHistoryChart: React.FC<SwapHistoryChartProps> = ({ selectedPool
   };
   
   if (!selectedPool) {
-    return <div className="card bg-base-100 shadow-xl p-6">请选择一个交易池以查看交易历史</div>;
+    return <div className="card bg-base-100 shadow-xl p-6">Please select a pool to view trading history</div>;
   }
   
   return (
     <div className="card bg-base-100 shadow-xl p-6">
-      <h2 className="text-xl font-bold mb-4">交易历史</h2>
+      <h2 className="text-xl font-bold mb-4">Trading History</h2>
       
       <div className="flex justify-center mb-4">
         <div className="join">
@@ -149,13 +149,13 @@ export const SwapHistoryChart: React.FC<SwapHistoryChartProps> = ({ selectedPool
             className={`btn join-item ${chartType === 'volume' ? 'btn-active' : ''}`}
             onClick={() => setChartType('volume')}
           >
-            交易量
+            Volume
           </button>
           <button 
             className={`btn join-item ${chartType === 'price' ? 'btn-active' : ''}`}
             onClick={() => setChartType('price')}
           >
-            价格
+            Price
           </button>
         </div>
       </div>
@@ -163,7 +163,7 @@ export const SwapHistoryChart: React.FC<SwapHistoryChartProps> = ({ selectedPool
       <Line options={options} data={chartData} />
       
       <div className="mt-4 text-sm text-center opacity-70">
-        注：此数据为模拟数据，仅用于UI展示
+        Note: This data is simulated for UI display
       </div>
     </div>
   );

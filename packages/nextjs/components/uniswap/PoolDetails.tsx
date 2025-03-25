@@ -9,20 +9,20 @@ interface PoolDetailsProps {
 
 export const PoolDetails: React.FC<PoolDetailsProps> = ({ selectedPool }) => {
   if (!selectedPool) {
-    return <div className="card bg-base-100 shadow-xl p-6">请选择一个交易池查看详情</div>;
+    return <div className="card bg-base-100 shadow-xl p-6">Please select a pool to view details</div>;
   }
 
-  // 提供帮助函数来处理数字格式化
+  // Helper function to handle number formatting
   const formatReserve = (amount: bigint, symbol: string) => {
     try {
-      console.log(`Pool详情格式化储备金额 [${symbol}]: ${amount.toString()}`);
+      console.log(`Pool details formatting reserve amount [${symbol}]: ${amount.toString()}`);
       
       if (amount === BigInt(0)) {
         return 0;
       }
       
-      let divisor = BigInt(10 ** 18); // 默认18位小数
-      let decimals = 4; // 默认显示4位小数
+      let divisor = BigInt(10 ** 18); // Default 18 decimal places
+      let decimals = 4; // Default display 4 decimal places
       
       if (symbol === "WBTC") {
         divisor = BigInt(10 ** 8);
@@ -32,7 +32,7 @@ export const PoolDetails: React.FC<PoolDetailsProps> = ({ selectedPool }) => {
         decimals = 2;
       } else if (symbol === "WETH") {
         divisor = BigInt(10 ** 18);
-        decimals = 8; // 增加WETH的小数位数，以确保小数值能够正确显示
+        decimals = 8; // Increase WETH decimal places to ensure small decimal values display correctly
       } else if (symbol === "TEST") {
         divisor = BigInt(10 ** 18);
         decimals = 2;
@@ -41,12 +41,12 @@ export const PoolDetails: React.FC<PoolDetailsProps> = ({ selectedPool }) => {
       const wholePart = amount / divisor;
       const fractionPart = amount % divisor;
       
-      // 对于非常小的值，确保不会四舍五入为0
+      // For very small values, ensure they don't round to 0
       let result;
       if (wholePart === BigInt(0) && fractionPart > BigInt(0)) {
-        // 对于小于1的值，保留更多小数位
+        // For values less than 1, keep more decimal places
         const fractionStr = fractionPart.toString().padStart(Number(Math.log10(Number(divisor))), '0');
-        // 找到第一个非0数字的位置
+        // Find the position of the first non-zero digit
         let firstNonZero = 0;
         for (let i = 0; i < fractionStr.length; i++) {
           if (fractionStr[i] !== '0') {
@@ -54,20 +54,20 @@ export const PoolDetails: React.FC<PoolDetailsProps> = ({ selectedPool }) => {
             break;
           }
         }
-        // 确保至少显示3位有效数字
+        // Ensure at least 3 significant digits are displayed
         const significantDigits = Math.max(decimals, firstNonZero + 3);
         const floatValue = Number(fractionPart) / Number(divisor);
         result = parseFloat(floatValue.toFixed(significantDigits));
       } else {
-        // 正常情况下的格式化
+        // Normal formatting
         const floatValue = Number(wholePart) + Number(fractionPart) / Number(divisor);
         result = parseFloat(floatValue.toFixed(decimals));
       }
       
-      console.log(`${symbol}最终格式化结果: ${result}`);
+      console.log(`${symbol} final formatting result: ${result}`);
       return result;
     } catch (error) {
-      console.error(`格式化储备金额时出错:`, error);
+      console.error(`Error formatting reserve amount:`, error);
       return 0;
     }
   };
@@ -79,10 +79,10 @@ export const PoolDetails: React.FC<PoolDetailsProps> = ({ selectedPool }) => {
   
   return (
     <div className="card bg-base-100 shadow-xl p-6">
-      <h2 className="text-xl font-bold mb-4">交易池详情</h2>
+      <h2 className="text-xl font-bold mb-4">Pool Details</h2>
       <div className="grid grid-cols-2 gap-4">
         <div className="stat">
-          <div className="stat-title">{selectedPool.token0Symbol} 储备</div>
+          <div className="stat-title">{selectedPool.token0Symbol} Reserve</div>
           <div className="stat-value text-lg font-mono">
             {reserve0Formatted.toLocaleString(undefined, { 
               minimumFractionDigits: 2,
@@ -91,7 +91,7 @@ export const PoolDetails: React.FC<PoolDetailsProps> = ({ selectedPool }) => {
           </div>
         </div>
         <div className="stat">
-          <div className="stat-title">{selectedPool.token1Symbol} 储备</div>
+          <div className="stat-title">{selectedPool.token1Symbol} Reserve</div>
           <div className="stat-value text-lg font-mono">
             {reserve1Formatted.toLocaleString(undefined, { 
               minimumFractionDigits: 2,
@@ -100,26 +100,26 @@ export const PoolDetails: React.FC<PoolDetailsProps> = ({ selectedPool }) => {
           </div>
         </div>
         <div className="stat">
-          <div className="stat-title">常数K</div>
+          <div className="stat-title">Constant K</div>
           <div className="stat-value text-lg font-mono">{k.toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>
           <div className="stat-desc">x · y = k</div>
         </div>
         <div className="stat">
-          <div className="stat-title">交易费率</div>
+          <div className="stat-title">Fee Rate</div>
           <div className="stat-value text-lg">{(selectedPool.fee * 100).toFixed(2)}%</div>
         </div>
       </div>
       <div className="mt-4 flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm opacity-60">交易池地址:</span>
+          <span className="text-sm opacity-60">Pool address:</span>
           <div className="badge badge-primary font-mono">{selectedPool.address.slice(0, 6)}...{selectedPool.address.slice(-4)}</div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm opacity-60">{selectedPool.token0Symbol} 地址:</span>
+          <span className="text-sm opacity-60">{selectedPool.token0Symbol} address:</span>
           <div className="badge badge-secondary font-mono">{selectedPool.token0.slice(0, 6)}...{selectedPool.token0.slice(-4)}</div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm opacity-60">{selectedPool.token1Symbol} 地址:</span>
+          <span className="text-sm opacity-60">{selectedPool.token1Symbol} address:</span>
           <div className="badge badge-secondary font-mono">{selectedPool.token1.slice(0, 6)}...{selectedPool.token1.slice(-4)}</div>
         </div>
       </div>

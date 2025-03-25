@@ -28,7 +28,7 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
     hash: txHash as `0x${string}` | undefined,
   });
 
-  // 获取路由合约
+  // Get router contract
   const routerAddress = externalContracts[11155111].UniswapV2Router02.address as `0x${string}`;
   const routerAbi = externalContracts[11155111].UniswapV2Router02.abi;
   const erc20Abi = [
@@ -58,7 +58,7 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
     }
   ];
 
-  // 当输入金额或选择的池子变化时，计算输出金额
+  // Calculate output amount when input amount or selected pool changes
   useEffect(() => {
     if (!selectedPool || !inputAmount || parseFloat(inputAmount) <= 0) {
       setOutputAmount("");
@@ -66,11 +66,11 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       return;
     }
 
-    // 获取当前储备
+    // Get current reserves
     const reserve0 = swapDirection === "token0ToToken1" ? selectedPool.reserve0 : selectedPool.reserve1;
     const reserve1 = swapDirection === "token0ToToken1" ? selectedPool.reserve1 : selectedPool.reserve0;
     
-    // 计算输入金额（考虑token小数位）
+    // Calculate input amount (considering token decimals)
     let inputAmountInWei: bigint;
     const tokenSymbol = swapDirection === "token0ToToken1" ? selectedPool.token0Symbol : selectedPool.token1Symbol;
     
@@ -82,56 +82,56 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       inputAmountInWei = BigInt(Math.floor(parseFloat(inputAmount) * 10 ** 18));
     }
     
-    // 计算输出金额（考虑0.3%的交易费）
+    // Calculate output amount (considering 0.3% swap fee)
     const inputWithFee = inputAmountInWei * BigInt(997);
     const numerator = inputWithFee * reserve1;
     const denominator = reserve0 * BigInt(1000) + inputWithFee;
     const outputAmountInWei = numerator / denominator;
     
-    // 更新格式化输出金额的逻辑
+    // Update output amount formatting logic
     const outputTokenSymbol = swapDirection === "token0ToToken1" ? selectedPool.token1Symbol : selectedPool.token0Symbol;
 
-    // 根据代币类型确定小数位数
+    // Determine decimal places based on token type
     let decimals = 6;
     if (outputTokenSymbol === "WBTC") decimals = 8;
-    else if (outputTokenSymbol === "WETH") decimals = 8; // WETH使用8位小数显示
+    else if (outputTokenSymbol === "WETH") decimals = 8; // WETH uses 8 decimal places
     else if (outputTokenSymbol === "USDC" || outputTokenSymbol === "USDT") decimals = 6;
     else if (outputTokenSymbol === "TEST") decimals = 6;
 
-    // 根据值的大小调整小数位数
+    // Adjust decimal places based on value size
     const outputValue = Number(outputAmountInWei) / (10 ** getDecimals(outputTokenSymbol));
     let formattedOutput: string;
 
     if (outputValue < 0.000001) {
-      formattedOutput = outputValue.toExponential(6); // 使用科学计数法
+      formattedOutput = outputValue.toExponential(6); // Use scientific notation
     } else if (outputValue < 0.1) {
-      formattedOutput = outputValue.toFixed(decimals); // 小值使用更多小数位
+      formattedOutput = outputValue.toFixed(decimals); // Small values use more decimal places
     } else if (outputValue < 1) {
-      formattedOutput = outputValue.toFixed(Math.min(decimals, 6)); // 中等值
+      formattedOutput = outputValue.toFixed(Math.min(decimals, 6)); // Medium values
     } else {
-      formattedOutput = outputValue.toFixed(Math.min(decimals, 4)); // 大值
+      formattedOutput = outputValue.toFixed(Math.min(decimals, 4)); // Large values
     }
 
-    console.log(`格式化输出: ${outputAmountInWei} → ${outputValue} → ${formattedOutput} (${outputTokenSymbol})`);
+    console.log(`Formatted output: ${outputAmountInWei} → ${outputValue} → ${formattedOutput} (${outputTokenSymbol})`);
     setOutputAmount(formattedOutput);
     
-    // 计算价格影响
+    // Calculate price impact
     const spotPrice = Number(reserve1) / Number(reserve0);
     const executionPrice = Number(outputAmountInWei) / Number(inputAmountInWei);
     const impact = Math.abs((spotPrice - executionPrice) / spotPrice * 100);
-    setPriceImpact(impact > 100 ? 100 : impact); // 限制最大值为100%
+    setPriceImpact(impact > 100 ? 100 : impact); // Limit max value to 100%
     
   }, [inputAmount, selectedPool, swapDirection]);
 
-  // 交换代币方向
+  // Switch token direction
   const handleSwapDirection = () => {
     setSwapDirection(swapDirection === "token0ToToken1" ? "token1ToToken0" : "token0ToToken1");
-    setInputAmount(""); // 清空输入，避免计算错误
+    setInputAmount(""); // Clear input to avoid calculation errors
     setOutputAmount("");
     setTxHash(null);
   };
 
-  // 获取代币符号
+  // Get token symbols
   const getTokenSymbols = () => {
     if (!selectedPool) return { fromSymbol: "?", toSymbol: "?" };
     
@@ -148,7 +148,7 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
     }
   };
 
-  // 获取代币地址
+  // Get token addresses
   const getTokenAddresses = () => {
     if (!selectedPool) return { fromToken: null, toToken: null };
     
@@ -165,14 +165,14 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
     }
   };
 
-  // 获取代币小数位数
+  // Get token decimals
   const getDecimals = (symbol: string) => {
     if (symbol === "WBTC") return 8;
     if (symbol === "USDC" || symbol === "USDT") return 6;
-    return 18; // 默认为18位（大多数ERC20代币）
+    return 18; // Default is 18 (most ERC20 tokens)
   };
 
-  // 处理代币授权
+  // Handle token approval
   const handleApprove = async () => {
     if (!selectedPool || !account || !inputAmount) return;
     
@@ -183,12 +183,12 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       const { fromSymbol } = getTokenSymbols();
       
       if (!fromToken) {
-        throw new Error("未找到代币地址");
+        throw new Error("Token address not found");
       }
       
       const amountToApprove = parseUnits(inputAmount, getDecimals(fromSymbol));
       
-      // 授权Router合约使用代币
+      // Authorize Router contract to use tokens
       const approveTx = await writeContractAsync({
         address: fromToken,
         abi: erc20Abi,
@@ -199,14 +199,14 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       setTxHash(approveTx);
       
     } catch (error) {
-      console.error("授权失败:", error);
-      alert("授权失败，请查看控制台了解更多信息");
+      console.error("Approval failed:", error);
+      alert("Approval failed, please check console for more information");
     } finally {
       setIsApproving(false);
     }
   };
 
-  // 执行代币交换
+  // Execute token swap
   const handleSwap = async () => {
     if (!selectedPool || !account || !inputAmount || !outputAmount) return;
     
@@ -217,20 +217,20 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       const { fromSymbol, toSymbol } = getTokenSymbols();
       
       if (!fromToken || !toToken) {
-        throw new Error("未找到代币地址");
+        throw new Error("Token address not found");
       }
       
-      // 计算交换参数
-      const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20分钟后过期
+      // Calculate swap parameters
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // Expires in 20 minutes
       const amountIn = parseUnits(inputAmount, getDecimals(fromSymbol));
       const amountOutMin = parseUnits(
         (parseFloat(outputAmount) * (1 - slippage / 100)).toFixed(
-          Math.min(getDecimals(toSymbol), 8) // 最多使用8位小数
+          Math.min(getDecimals(toSymbol), 8) // Use at most 8 decimal places
         ), 
         getDecimals(toSymbol)
       );
       
-      console.log("交换参数:", {
+      console.log("Swap parameters:", {
         amountIn: amountIn.toString(),
         amountOutMin: amountOutMin.toString(),
         path: [fromToken, toToken],
@@ -238,7 +238,7 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         deadline
       });
       
-      // 执行交换
+      // Execute swap
       const swapTx = await writeContractAsync({
         address: routerAddress,
         abi: routerAbi,
@@ -255,8 +255,8 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       setTxHash(swapTx);
       
     } catch (error) {
-      console.error("交换失败:", error);
-      alert("交换失败，请查看控制台了解更多信息");
+      console.error("Swap failed:", error);
+      alert("Swap failed, please check console for more information");
     } finally {
       setIsSwapping(false);
     }
@@ -265,12 +265,12 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
   const { fromSymbol, toSymbol } = getTokenSymbols();
 
   if (!selectedPool) {
-    return <div className="card bg-base-100 shadow-xl p-6">请选择一个交易池以开始兑换</div>;
+    return <div className="card bg-base-100 shadow-xl p-6">Please select a pool to start swapping</div>;
   }
 
   return (
     <div className="card bg-base-100 shadow-xl p-6">
-      <h2 className="text-xl font-bold mb-4">代币兑换</h2>
+      <h2 className="text-xl font-bold mb-4">Token Swap</h2>
       
       {txHash && (isTxSuccess || isWaitingForTx) && (
         <div className={`alert ${isTxSuccess ? 'alert-success' : 'alert-info'} mb-4`}>
@@ -278,29 +278,29 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
             {isWaitingForTx ? (
               <>
                 <span className="loading loading-spinner loading-xs mr-2"></span>
-                <span>交易处理中...</span>
+                <span>Transaction processing...</span>
               </>
             ) : (
               <>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>交易成功!</span>
+                <span>Transaction successful!</span>
               </>
             )}
           </div>
           <div className="text-xs mt-1">
             <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="link">
-              在Etherscan上查看
+              View on Etherscan
             </a>
           </div>
         </div>
       )}
       
-      {/* 输入金额 */}
+      {/* Input amount */}
       <div className="form-control mb-2">
         <label className="label">
-          <span className="label-text">你支付</span>
+          <span className="label-text">You pay</span>
         </label>
         <div className="input-group">
           <input
@@ -317,7 +317,7 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         </div>
       </div>
       
-      {/* 交换方向按钮 */}
+      {/* Swap direction button */}
       <div className="flex justify-center my-2">
         <button 
           className="btn btn-circle btn-sm"
@@ -330,10 +330,10 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         </button>
       </div>
       
-      {/* 输出金额 */}
+      {/* Output amount */}
       <div className="form-control mb-4">
         <label className="label">
-          <span className="label-text">你收到</span>
+          <span className="label-text">You receive</span>
         </label>
         <div className="input-group">
           <input
@@ -347,10 +347,10 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         </div>
       </div>
       
-      {/* 滑点设置 */}
+      {/* Slippage setting */}
       <div className="form-control mb-4">
         <label className="label">
-          <span className="label-text">滑点容忍度: {slippage}%</span>
+          <span className="label-text">Slippage tolerance: {slippage}%</span>
         </label>
         <input
           type="range"
@@ -369,11 +369,11 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         </div>
       </div>
       
-      {/* 交易详情 */}
+      {/* Transaction details */}
       {inputAmount && outputAmount && (
         <div className="bg-base-200 p-4 rounded-lg mb-4">
           <div className="flex justify-between mb-2">
-            <span className="text-sm opacity-70">价格</span>
+            <span className="text-sm opacity-70">Price</span>
             <span className="text-sm">
               1 {fromSymbol} = {parseFloat(inputAmount) > 0 
                 ? (parseFloat(outputAmount) / parseFloat(inputAmount)).toFixed(
@@ -383,7 +383,7 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
             </span>
           </div>
           <div className="flex justify-between mb-2">
-            <span className="text-sm opacity-70">最小接收</span>
+            <span className="text-sm opacity-70">Minimum received</span>
             <span className="text-sm">
               {parseFloat(outputAmount) > 0 
                 ? (parseFloat(outputAmount) * (1 - slippage / 100)).toFixed(
@@ -393,7 +393,7 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm opacity-70">价格影响</span>
+            <span className="text-sm opacity-70">Price impact</span>
             <span className={`text-sm ${priceImpact > 5 ? "text-error" : priceImpact > 1 ? "text-warning" : "text-success"}`}>
               {priceImpact.toFixed(2)}%
             </span>
@@ -401,11 +401,11 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         </div>
       )}
       
-      {/* 按钮组 */}
+      {/* Buttons */}
       <div className="flex flex-col gap-2">
         {!account ? (
           <button className="btn btn-primary w-full">
-            请先连接钱包
+            Please connect wallet first
           </button>
         ) : (
           <>
@@ -417,9 +417,9 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
               {isApproving ? (
                 <>
                   <span className="loading loading-spinner loading-xs"></span>
-                  授权中...
+                  Approving...
                 </>
-              ) : "授权代币"}
+              ) : "Approve token"}
             </button>
             <button 
               className={`btn btn-primary w-full ${isSwapping ? 'btn-disabled' : ''}`}
@@ -429,17 +429,17 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
               {isSwapping ? (
                 <>
                   <span className="loading loading-spinner loading-xs"></span>
-                  兑换中...
+                  Swapping...
                 </>
-              ) : "兑换"}
+              ) : "Swap"}
             </button>
           </>
         )}
       </div>
       
-      {/* 测试网提示 */}
+      {/* Testnet notice */}
       <div className="mt-4 text-xs text-center opacity-70">
-        此界面连接到Sepolia测试网，请确保您的钱包已切换到正确的网络
+        This interface is connected to the Sepolia testnet, please ensure your wallet is switched to the correct network
       </div>
     </div>
   );

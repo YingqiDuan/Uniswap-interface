@@ -39,18 +39,18 @@ export const RPC_CHAIN_NAMES: Record<number, string> = {
 export const getAlchemyHttpUrl = (chainId: number, key = scaffoldConfig.alchemyApiKey): string | null => {
   const chainName = RPC_CHAIN_NAMES[chainId];
   if (!chainName) {
-    console.log(`无法为chainId=${chainId}找到映射的链名`);
+    console.log(`Could not find mapped chain name for chainId=${chainId}`);
     return null;
   }
 
-  // 为Sepolia测试网使用专用RPC URL
+  // Use dedicated RPC URL for Sepolia testnet
   if (chainId === 11155111) {
     const url = process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA || `https://eth-sepolia.g.alchemy.com/v2/${key}`;
-    console.log(`使用Sepolia RPC URL: ${url}`);
+    console.log(`Using Sepolia RPC URL: ${url}`);
     return url;
   }
 
-  console.log(`为${chainName} (id: ${chainId})创建Alchemy URL，使用API密钥: ${key.slice(0, 4)}...`);
+  console.log(`Creating Alchemy URL for ${chainName} (id: ${chainId}), using API key: ${key.slice(0, 4)}...`);
   return `https://rpc.ankr.com/${chainName}`;
 };
 

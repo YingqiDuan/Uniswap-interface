@@ -1,8 +1,8 @@
 import Dashboard from "~~/components/uniswap/Dashboard";
 
 export const metadata = {
-  title: "Uniswap界面 | 恒定乘积自动做市商",
-  description: "基于恒定乘积自动做市商 (x·y=k) 模型的交易所界面",
+  title: "Uniswap Interface | Constant Product AMM",
+  description: "Exchange interface based on constant product automated market maker (x·y=k) model",
 };
 
 export default function UniswapPage() {
