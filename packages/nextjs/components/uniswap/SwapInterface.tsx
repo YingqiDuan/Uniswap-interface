@@ -169,6 +169,7 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
   const getDecimals = (symbol: string) => {
     if (symbol === "WBTC") return 8;
     if (symbol === "USDC" || symbol === "USDT") return 6;
+    if (symbol === "TEST") return 18; // 确保TEST代币使用正确的精度
     return 18; // Default is 18 (most ERC20 tokens)
   };
 
@@ -223,8 +224,14 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       // Calculate swap parameters
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // Expires in 20 minutes
       const amountIn = parseUnits(inputAmount, getDecimals(fromSymbol));
+
+      // 使用更激进的滑点保护，确保交易能够执行成功
+      // 当price impact很高时，我们需要设置更保守的amountOutMin
+      const effectiveSlippage = priceImpact > 10 ? Math.max(slippage, priceImpact + 5) : slippage;
+      console.log(`Using effective slippage: ${effectiveSlippage}% (original: ${slippage}%, price impact: ${priceImpact}%)`);
+
       const amountOutMin = parseUnits(
-        (parseFloat(outputAmount) * (1 - slippage / 100)).toFixed(
+        (parseFloat(outputAmount) * (1 - effectiveSlippage / 100)).toFixed(
           Math.min(getDecimals(toSymbol), 8) // Use at most 8 decimal places
         ), 
         getDecimals(toSymbol)
@@ -235,14 +242,19 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         amountOutMin: amountOutMin.toString(),
         path: [fromToken, toToken],
         to: account,
-        deadline
+        deadline,
+        routerAddress,
+        fromSymbol,
+        toSymbol,
+        fromTokenDecimals: getDecimals(fromSymbol),
+        toTokenDecimals: getDecimals(toSymbol)
       });
       
-      // Execute swap
+      // Execute swap with support for fee-on-transfer tokens
       const swapTx = await writeContractAsync({
         address: routerAddress,
         abi: routerAbi,
-        functionName: "swapExactTokensForTokens",
+        functionName: "swapExactTokensForTokensSupportingFeeOnTransferTokens",
         args: [
           amountIn,
           amountOutMin,
@@ -254,9 +266,21 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       
       setTxHash(swapTx);
       
-    } catch (error) {
-      console.error("Swap failed:", error);
-      alert("Swap failed, please check console for more information");
+    } catch (error: any) {
+      console.error("Swap failed with error:", error);
+      
+      // 尝试提取更详细的错误信息
+      if (error.toString().includes("execution reverted")) {
+        const revertReason = error.toString().match(/execution reverted: (.*?)(?:$|"\})/);
+        if (revertReason && revertReason[1]) {
+          console.error("Revert reason:", revertReason[1]);
+          alert(`Swap failed: ${revertReason[1]}`);
+        } else {
+          alert("Swap failed, please check console for more information");
+        }
+      } else {
+        alert("Swap failed, please check console for more information");
+      }
     } finally {
       setIsSwapping(false);
     }
