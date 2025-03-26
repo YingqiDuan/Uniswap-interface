@@ -11,6 +11,7 @@
     "account": "yarn foundry:account",
     "account:generate": "yarn foundry:generate",
     "account:import": "yarn foundry:account-import",
+    "build": "NEXT_LINT_DISABLE=1 next:build",
     "chain": "yarn foundry:chain",
     "compile": "yarn foundry:compile",
     "deploy": "yarn foundry:deploy",
