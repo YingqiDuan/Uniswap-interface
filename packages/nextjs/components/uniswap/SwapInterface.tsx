@@ -250,11 +250,11 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         toTokenDecimals: getDecimals(toSymbol)
       });
       
-      // Execute swap with support for fee-on-transfer tokens
+      // Execute swap
       const swapTx = await writeContractAsync({
         address: routerAddress,
         abi: routerAbi,
-        functionName: "swapExactTokensForTokensSupportingFeeOnTransferTokens",
+        functionName: "swapExactTokensForTokens",
         args: [
           amountIn,
           amountOutMin,
