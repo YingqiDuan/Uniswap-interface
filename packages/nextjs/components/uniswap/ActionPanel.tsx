@@ -46,7 +46,10 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
   // Check if we're dealing with ETH/WETH (compare symbols and addresses)
   const isToken0Weth = selectedPool?.token0Symbol === "WETH";
   const isToken1Weth = selectedPool?.token1Symbol === "WETH";
-  const isEthPair = isToken0Weth || isToken1Weth;
+  
+  // 只有直接使用ETH的情况才算作ETH对，使用WETH不算
+  // 在当前应用中，我们总是使用WETH而不是ETH，所以这个值应该始终为false
+  const isEthPair = false; // WETH是ERC20代币，应该用addLiquidity而不是addLiquidityETH
   
   // Get token balances
   const { data: ethBalance } = useBalance({
