@@ -161,10 +161,6 @@ export const SwapHistoryChart: React.FC<SwapHistoryChartProps> = ({ selectedPool
       </div>
       
       <Line options={options} data={chartData} />
-      
-      <div className="mt-4 text-sm text-center opacity-70">
-        Note: This data is simulated for UI display
-      </div>
     </div>
   );
 }; 
