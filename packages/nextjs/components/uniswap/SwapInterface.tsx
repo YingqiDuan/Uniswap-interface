@@ -223,7 +223,7 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       
       // Calculate swap parameters
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // Expires in 20 minutes
-      const amountIn = parseUnits(inputAmount, getDecimals(fromSymbol));
+      
 
       // 使用更激进的滑点保护，确保交易能够执行成功
       // 当price impact很高时，我们需要设置更保守的amountOutMin
@@ -237,37 +237,69 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         getDecimals(toSymbol)
       );
       
-      console.log("Swap parameters:", {
-        amountIn: amountIn.toString(),
-        amountOutMin: amountOutMin.toString(),
-        path: [fromToken, toToken],
-        to: account,
-        deadline,
-        routerAddress,
+      // ETH和WETH只是包装关系，这里统一处理
+      const isFromETH = fromSymbol === "ETH" || fromSymbol === "WETH";
+      const isToETH = toSymbol === "ETH" || toSymbol === "WETH";
+      
+      console.log("Swap type:", {
+        isFromETH,
+        isToETH,
         fromSymbol,
-        toSymbol,
-        fromTokenDecimals: getDecimals(fromSymbol),
-        toTokenDecimals: getDecimals(toSymbol)
+        toSymbol
       });
       
-      // Execute swap
-      const swapTx = await writeContractAsync({
-        address: routerAddress,
-        abi: routerAbi,
-        functionName: "swapExactTokensForTokens",
-        args: [
-          amountIn,
-          amountOutMin,
-          [fromToken, toToken],
-          account,
-          BigInt(deadline)
-        ],
-      });
+      let swapTx;
       
-      setTxHash(swapTx);
+      // 根据交易类型选择不同的swap函数
+      if (fromSymbol === "ETH") {
+        // ETH到代币，使用swapExactETHForTokens函数
+        console.log("Error executing swap: Direct ETH swaps are not supported. Please wrap your ETH to WETH first.");
+        alert("Direct ETH swaps are not supported. Please wrap your ETH to WETH first.");
+        setIsSwapping(false);
+        return;
+      } else if (toSymbol === "ETH") {
+        // 代币到ETH，使用swapExactTokensForETH函数
+        console.log("Error executing swap: Direct ETH swaps are not supported. Tokens will be swapped to WETH instead.");
+        alert("Direct ETH swaps are not supported. Tokens will be swapped to WETH instead.");
+        setIsSwapping(false);
+        return;
+      } else {
+        // 代币到代币，使用swapExactTokensForTokens函数
+        const amountIn = parseUnits(inputAmount, getDecimals(fromSymbol));
+        
+        console.log("Swap parameters:", {
+          amountIn: amountIn.toString(),
+          amountOutMin: amountOutMin.toString(),
+          path: [fromToken, toToken],
+          to: account,
+          deadline,
+          routerAddress,
+          fromSymbol,
+          toSymbol,
+          fromTokenDecimals: getDecimals(fromSymbol),
+          toTokenDecimals: getDecimals(toSymbol)
+        });
+        
+        swapTx = await writeContractAsync({
+          address: routerAddress,
+          abi: routerAbi,
+          functionName: "swapExactTokensForTokens",
+          args: [
+            amountIn,
+            amountOutMin,
+            [fromToken, toToken],
+            account,
+            BigInt(deadline)
+          ],
+        });
+      }
+      
+      if (swapTx) {
+        setTxHash(swapTx);
+      }
       
     } catch (error: any) {
-      console.error("Swap failed with error:", error);
+      console.error("Error executing swap:", error);
       
       // 尝试提取更详细的错误信息
       if (error.toString().includes("execution reverted")) {
@@ -278,6 +310,8 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
         } else {
           alert("Swap failed, please check console for more information");
         }
+      } else if (error.toString().includes("AbiFunctionNotFoundError")) {
+        alert("This type of swap is not supported by the current Router contract. Please try a different token pair.");
       } else {
         alert("Swap failed, please check console for more information");
       }
@@ -464,6 +498,75 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
       {/* Testnet notice */}
       <div className="mt-4 text-xs text-center opacity-70">
         This interface is connected to the Sepolia testnet, please ensure your wallet is switched to the correct network
+      </div>
+      
+      {/* WETH Wrapping Section */}
+      <div className="mt-6 border-t pt-4">
+        <h3 className="text-lg font-bold mb-3">Wrap ETH</h3>
+        <p className="text-sm mb-3">To swap with WETH, you need to wrap your ETH first</p>
+        
+        <div className="form-control mb-3">
+          <label className="label">
+            <span className="label-text">Amount to wrap</span>
+          </label>
+          <div className="input-group">
+            <input
+              type="number"
+              placeholder="0.0"
+              className="input input-bordered w-full"
+              id="wrapAmount"
+              min="0.001"
+              step="0.001"
+            />
+            <span className="btn btn-square">ETH</span>
+          </div>
+        </div>
+        
+        <button 
+          className="btn btn-secondary w-full"
+          onClick={async () => {
+            try {
+              const wrapInput = document.getElementById('wrapAmount') as HTMLInputElement;
+              const wrapAmount = wrapInput.value;
+              
+              if (!wrapAmount || !account) return;
+              
+              const wethContract = externalContracts[11155111].WETH.address as `0x${string}`;
+              const wethAbi = [
+                {
+                  "constant": false,
+                  "inputs": [],
+                  "name": "deposit",
+                  "outputs": [],
+                  "payable": true,
+                  "stateMutability": "payable",
+                  "type": "function"
+                }
+              ];
+              
+              // Execute wrap
+              const wrapTx = await writeContractAsync({
+                address: wethContract,
+                abi: wethAbi,
+                functionName: "deposit",
+                args: [],
+                value: parseUnits(wrapAmount, 18)
+              });
+              
+              alert("Wrapping transaction submitted!");
+              setTxHash(wrapTx);
+            } catch (error) {
+              console.error("Error wrapping ETH:", error);
+              alert("Failed to wrap ETH. Check console for details.");
+            }
+          }}
+        >
+          Wrap ETH to WETH
+        </button>
+        
+        <div className="text-xs text-center mt-2 opacity-70">
+          WETH address: {externalContracts[11155111].WETH.address}
+        </div>
       </div>
     </div>
   );
