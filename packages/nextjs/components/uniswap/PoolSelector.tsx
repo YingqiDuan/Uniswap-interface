@@ -92,14 +92,14 @@ const REAL_POOLS: Pool[] = [
     isRealPool: true,
   },
   {
-    address: "0x302A6715B24FB2410fd3cb62F8abE069567251Cd" as `0x${string}`, // vUSDT/WETH Pair
-    token0: "0x26fb2eee2F48d6EB3111e5aF0b3F11E6694296a8" as `0x${string}`, // vUSDT
+    address: "0x287B0e934ed0439E2a7b1d5F0FC25eA2c24b64f7" as `0x${string}`, // UNI/WETH Pair
+    token0: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984" as `0x${string}`, // UNI
     token1: "0xfff9976782d46cc05630d1f6ebab18b2324d6b14" as `0x${string}`, // WETH of Uniswap
-    token0Symbol: "vUSDT",
+    token0Symbol: "UNI",
     token1Symbol: "WETH",
     reserve0: BigInt(0), // Initialize to 0, wait for API update
     reserve1: BigInt(0), // Initialize to 0, wait for API update
-    fee: 0.005, // 0.5%
+    fee: 0.003, // 0.3%
     isRealPool: true,
   }
 ];
