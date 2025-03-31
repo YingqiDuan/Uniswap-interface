@@ -83,7 +83,7 @@ const REAL_POOLS: Pool[] = [
   {
     address: "0xCd40Fb4Bae9A7e2240975A590E23dA8a5AE3df67" as `0x${string}`, // TEST/WETH Pair
     token0: "0x22cD43F525494c87edB678cBbc7F99baEc7eC39B" as `0x${string}`, // TestToken
-    token1: "0xfff9976782d46cc05630d1f6ebab18b2324d6b14" as `0x${string}`, // WETH
+    token1: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9" as `0x${string}`, // WETH
     token0Symbol: "TEST",
     token1Symbol: "WETH",
     reserve0: BigInt(0), // Initialize to 0, wait for API update
@@ -94,7 +94,7 @@ const REAL_POOLS: Pool[] = [
   {
     address: "0x302A6715B24FB2410fd3cb62F8abE069567251Cd" as `0x${string}`, // vUSDT/WETH Pair
     token0: "0x26fb2eee2F48d6EB3111e5aF0b3F11E6694296a8" as `0x${string}`, // vUSDT
-    token1: "0xfff9976782d46cc05630d1f6ebab18b2324d6b14" as `0x${string}`, // WETH
+    token1: "0xfff9976782d46cc05630d1f6ebab18b2324d6b14" as `0x${string}`, // WETH of Uniswap
     token0Symbol: "vUSDT",
     token1Symbol: "WETH",
     reserve0: BigInt(0), // Initialize to 0, wait for API update
