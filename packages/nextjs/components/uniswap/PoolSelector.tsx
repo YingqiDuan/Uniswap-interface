@@ -52,30 +52,7 @@ const MOCK_POOLS: Pool[] = [
     reserve1: BigInt(60) * BigInt(10 ** 18), // 60 ETH
     fee: 0.003, // 0.3%
     isRealPool: false,
-  },
-  // Other mock pools
-  {
-    address: "0x123mock4" as `0x${string}`,
-    token0: "0x4444444444444444444444444444444444444444" as `0x${string}`,
-    token1: "0x2222222222222222222222222222222222222222" as `0x${string}`,
-    token0Symbol: "WBTC",
-    token1Symbol: "USDC",
-    reserve0: BigInt(1) * BigInt(10 ** 8), // 1 WBTC
-    reserve1: BigInt(25000) * BigInt(10 ** 6), // 25,000 USDC
-    fee: 0.003, // 0.3%
-    isRealPool: false,
-  },
-  {
-    address: "0x123mock5" as `0x${string}`,
-    token0: "0x2222222222222222222222222222222222222222" as `0x${string}`,
-    token1: "0x5555555555555555555555555555555555555555" as `0x${string}`,
-    token0Symbol: "USDC",
-    token1Symbol: "USDT",
-    reserve0: BigInt(50000) * BigInt(10 ** 6), // 50,000 USDC
-    reserve1: BigInt(50000) * BigInt(10 ** 6), // 50,000 USDT
-    fee: 0.003, // 0.3%
-    isRealPool: false,
-  },
+  }
 ];
 
 // Real liquidity pools we created on Sepolia
@@ -92,10 +69,10 @@ const REAL_POOLS: Pool[] = [
     isRealPool: true,
   },
   {
-    address: "0x287B0e934ed0439E2a7b1d5F0FC25eA2c24b64f7" as `0x${string}`, // UNI/WETH Pair
-    token0: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984" as `0x${string}`, // UNI
+    address: "0x21b8065d10f73EE2e260e5B47D3344d3Ced7596E" as `0x${string}`, // WISE/WETH Pair
+    token0: "0x66a0f676479Cee1d7373f3DC2e2952778BfF5bd6" as `0x${string}`, // WISE
     token1: "0xfff9976782d46cc05630d1f6ebab18b2324d6b14" as `0x${string}`, // WETH of Uniswap
-    token0Symbol: "UNI",
+    token0Symbol: "WISE",
     token1Symbol: "WETH",
     reserve0: BigInt(0), // Initialize to 0, wait for API update
     reserve1: BigInt(0), // Initialize to 0, wait for API update
