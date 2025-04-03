@@ -534,45 +534,39 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
               const wethContract = externalContracts[11155111].WETH.address as `0x${string}`;
               const routerAddress = externalContracts[11155111].UniswapV2Router02.address as `0x${string}`;
               
-              // 使用Router的swapExactETHForTokens方法代替deposit
-              // 设置滑点保护
-              const amountOutMin = parseUnits(
-                (parseFloat(wrapAmount) * 0.99).toFixed(18), // 1% 滑点
-                18
-              );
-              
-              // 设置路径 - 从ETH到WETH
-              const path = [
-                externalContracts[11155111].WETH.address, // 作为路径的第一个元素，这里路由会把ETH当作WETH处理
-                externalContracts[11155111].WETH.address  // 目标token是WETH
-              ];
+              // 使用Router的addLiquidityETH方法代替swapExactETHForTokens
+              // 这个函数会在内部将ETH转换为WETH
               
               // 设置deadline
               const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20分钟
               
-              // 执行swap而不是wrap
+              // 这里我们利用Router的addLiquidityETH函数中包含的WETH操作
+              // 我们设置token参数为WETH地址，但设置amountTokenDesired为0
+              // 这样实际上只会执行ETH到WETH的转换部分
               const swapTx = await writeContractAsync({
                 address: routerAddress,
                 abi: routerAbi,
-                functionName: "swapExactETHForTokens",
+                functionName: "addLiquidityETH",
                 args: [
-                  amountOutMin,
-                  path,
-                  account,
-                  BigInt(deadline)
+                  wethContract,           // token address (WETH)
+                  BigInt(0),              // amountTokenDesired (0 - 我们不想添加任何已有的WETH)
+                  BigInt(0),              // amountTokenMin (0 - 最小添加量)
+                  BigInt(0),              // amountETHMin (0 - 允许所有ETH都被使用)
+                  account,                // to address (接收者)
+                  BigInt(deadline)        // deadline
                 ],
-                value: parseUnits(wrapAmount, 18)
+                value: parseUnits(wrapAmount, 18)  // 发送ETH
               });
               
-              alert("ETH to WETH swap transaction submitted!");
+              alert("ETH to WETH conversion transaction submitted!");
               setTxHash(swapTx);
             } catch (error) {
-              console.error("Error swapping ETH to WETH:", error);
-              alert("Failed to swap ETH to WETH. Check console for details.");
+              console.error("Error converting ETH to WETH:", error);
+              alert("Failed to convert ETH to WETH. Check console for details.");
             }
           }}
         >
-          Swap ETH to WETH
+          Convert ETH to WETH
         </button>
         
         <div className="text-xs text-center mt-2 opacity-70">
