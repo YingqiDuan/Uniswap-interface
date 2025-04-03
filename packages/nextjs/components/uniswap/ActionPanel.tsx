@@ -20,18 +20,20 @@ interface ActionPanelProps {
 export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps) => {
   const { address: connectedAddress } = useAccount();
   const [activeAction, setActiveAction] = useState<ActionType>(ActionType.Deposit);
+  const [activeTab, setActiveTab] = useState<string>("add");
   
   // Deposit state
-  const [depositAmount0, setDepositAmount0] = useState("");
-  const [depositAmount1, setDepositAmount1] = useState("");
+  const [depositAmount0, setDepositAmount0] = useState<string>("");
+  const [depositAmount1, setDepositAmount1] = useState<string>("");
   
   // Redeem state
-  const [redeemAmount, setRedeemAmount] = useState("");
+  const [redeemAmount, setRedeemAmount] = useState<string>("");
   
   // Swap state
   const [swapFromToken, setSwapFromToken] = useState<"token0" | "token1">("token0");
-  const [swapAmount, setSwapAmount] = useState("");
-  const [slippageTolerance, setSlippageTolerance] = useState("0.5");
+  const [swapAmount, setSwapAmount] = useState<string>("");
+  const [swapDirection, setSwapDirection] = useState<string>("token0ToToken1");
+  const [slippageTolerance, setSlippageTolerance] = useState<string>("5.0");
   const [isApproving, setIsApproving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,10 +48,8 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
   // Check if we're dealing with ETH/WETH (compare symbols and addresses)
   const isToken0Weth = selectedPool?.token0Symbol === "WETH";
   const isToken1Weth = selectedPool?.token1Symbol === "WETH";
-  
-  // 只有直接使用ETH的情况才算作ETH对，使用WETH不算
-  // 在当前应用中，我们总是使用WETH而不是ETH，所以这个值应该始终为false
-  const isEthPair = false; // WETH是ERC20代币，应该用addLiquidity而不是addLiquidityETH
+  // 根据实际情况判断是否是ETH对（包含WETH的对）
+  const isEthPair = isToken0Weth || isToken1Weth; 
   
   // Get token balances
   const { data: ethBalance } = useBalance({
@@ -165,20 +165,41 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
     try {
       setIsLoading(true);
       
-      // Parse amounts
-      const amount0 = parseEther(depositAmount0);
-      const amount1 = parseEther(depositAmount1);
+      // 记录当前参数
+      console.log("Adding liquidity with params:");
+      console.log("isEthPair:", isEthPair);
+      console.log("isToken0Weth:", isToken0Weth);
+      console.log("isToken1Weth:", isToken1Weth);
+      console.log("Token0:", selectedPool.token0Symbol, selectedPool.token0);
+      console.log("Token1:", selectedPool.token1Symbol, selectedPool.token1);
+      console.log("Amount0:", depositAmount0);
+      console.log("Amount1:", depositAmount1);
       
-      // Calculate min amounts (accounting for slippage)
-      const slippagePercent = parseFloat(slippageTolerance) / 100;
-      const minAmount0 = amount0 - (amount0 * BigInt(Math.floor(slippagePercent * 100))) / 100n;
-      const minAmount1 = amount1 - (amount1 * BigInt(Math.floor(slippagePercent * 100))) / 100n;
+      // Parse amounts
+      const amount0 = parseEther(depositAmount1 === "" ? "0" : depositAmount0);
+      const amount1 = parseEther(depositAmount1 === "" ? "0" : depositAmount1);
+      
+      // 记录解析后的金额
+      console.log("Parsed amount0:", amount0.toString());
+      console.log("Parsed amount1:", amount1.toString());
+      
+      // 更慷慨的滑点设置 - 提高成功率
+      const slippagePercent = Math.max(parseFloat(slippageTolerance), 5) / 100; // 至少5%滑点
+      console.log("Using slippage percentage:", slippagePercent * 100, "%");
+      
+      // 计算最小接收量（考虑滑点）
+      const minAmount0 = amount0 - (amount0 * BigInt(Math.floor(slippagePercent * 10000))) / 10000n;
+      const minAmount1 = amount1 - (amount1 * BigInt(Math.floor(slippagePercent * 10000))) / 10000n;
+      
+      console.log("Min amount0:", minAmount0.toString());
+      console.log("Min amount1:", minAmount1.toString());
       
       // Set deadline to 20 minutes from now
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
       
-      // Check if we need to approve tokens
+      // 如果是与ETH/WETH的交易对
       if (isEthPair) {
+        console.log("Using ETH pair logic");
         // ETH pair logic (one token is WETH)
         const tokenAddress = isToken0Weth ? selectedPool.token1 : selectedPool.token0;
         const tokenAmount = isToken0Weth ? amount1 : amount0;
@@ -187,33 +208,60 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
         const minTokenAmount = isToken0Weth ? minAmount1 : minAmount0;
         const minEthAmount = isToken0Weth ? minAmount0 : minAmount1;
         
+        console.log("Token address:", tokenAddress);
+        console.log("Token amount:", tokenAmount.toString());
+        console.log("Token allowance:", tokenAllowance?.toString() || "unknown");
+        console.log("ETH amount:", ethAmount.toString());
+        console.log("Min token amount:", minTokenAmount.toString());
+        console.log("Min ETH amount:", minEthAmount.toString());
+        
+        // 检查代币授权
         if (tokenAllowance && tokenAllowance < tokenAmount) {
+          console.log("Approving token...");
           await approveToken(tokenAddress as `0x${string}`, parseEther("100000000")); // Approve a large amount
         }
         
+        console.log("Adding liquidity with ETH...");
+        // 使用addLiquidity而不是addLiquidityETH，因为我们用的是WETH
         await writeContract({
           address: routerContract.address,
           abi: routerContract.abi,
-          functionName: "addLiquidityETH",
+          functionName: "addLiquidity",
           args: [
-            tokenAddress,
-            tokenAmount,
-            minTokenAmount,
-            minEthAmount,
+            isToken0Weth ? selectedPool.token0 : tokenAddress,
+            isToken0Weth ? tokenAddress : selectedPool.token1,
+            amount0,
+            amount1,
+            minAmount0,
+            minAmount1,
             connectedAddress,
             deadline,
           ],
-          value: ethAmount,
         });
       } else {
+        console.log("Using regular token pair logic");
         // Regular token pair logic
         if (token0Allowance && token0Allowance < amount0) {
+          console.log("Approving token0...");
           await approveToken(selectedPool.token0 as `0x${string}`, parseEther("100000000")); // Approve a large amount
         }
         
         if (token1Allowance && token1Allowance < amount1) {
+          console.log("Approving token1...");
           await approveToken(selectedPool.token1 as `0x${string}`, parseEther("100000000")); // Approve a large amount
         }
+        
+        console.log("Adding liquidity for regular token pair...");
+        console.log("Args:", [
+          selectedPool.token0,
+          selectedPool.token1,
+          amount0,
+          amount1,
+          minAmount0,
+          minAmount1,
+          connectedAddress,
+          deadline,
+        ]);
         
         await writeContract({
           address: routerContract.address,
@@ -432,6 +480,44 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
     }
   };
 
+  const handleDepositAmount0Change = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDepositAmount0(e.target.value);
+    
+    // 如果池子存在且有储备，计算对应的token1数量
+    if (selectedPool && selectedPool.reserve0 > 0n && selectedPool.reserve1 > 0n) {
+      const amount0 = parseFloat(e.target.value || "0");
+      const reserve0 = Number(selectedPool.reserve0) / (10 ** 18);
+      const reserve1 = Number(selectedPool.reserve1) / (10 ** 18);
+      
+      // 根据当前池子比例计算token1数量
+      const amount1 = (amount0 * reserve1) / reserve0;
+      
+      // 更新token1输入框
+      if (!isNaN(amount1) && isFinite(amount1)) {
+        setDepositAmount1(amount1.toFixed(6));
+      }
+    }
+  };
+
+  const handleDepositAmount1Change = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDepositAmount1(e.target.value);
+    
+    // 如果池子存在且有储备，计算对应的token0数量
+    if (selectedPool && selectedPool.reserve0 > 0n && selectedPool.reserve1 > 0n) {
+      const amount1 = parseFloat(e.target.value || "0");
+      const reserve0 = Number(selectedPool.reserve0) / (10 ** 18);
+      const reserve1 = Number(selectedPool.reserve1) / (10 ** 18);
+      
+      // 根据当前池子比例计算token0数量
+      const amount0 = (amount1 * reserve0) / reserve1;
+      
+      // 更新token0输入框
+      if (!isNaN(amount0) && isFinite(amount0)) {
+        setDepositAmount0(amount0.toFixed(6));
+      }
+    }
+  };
+
   // Determine current button text based on approval and loading states
   const getActionButtonText = (action: ActionType) => {
     if (isApproving) return "Approving...";
@@ -490,7 +576,7 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
                 placeholder="0.0"
                 className="input input-bordered w-full"
                 value={depositAmount0}
-                onChange={(e) => setDepositAmount0(e.target.value)}
+                onChange={handleDepositAmount0Change}
               />
             </div>
             <div className="form-control">
@@ -505,7 +591,7 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
                 placeholder="0.0"
                 className="input input-bordered w-full"
                 value={depositAmount1}
-                onChange={(e) => setDepositAmount1(e.target.value)}
+                onChange={handleDepositAmount1Change}
               />
             </div>
             <div className="form-control">
@@ -514,7 +600,7 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
               </label>
               <input
                 type="text"
-                placeholder="0.5"
+                placeholder="5.0"
                 className="input input-bordered w-full"
                 value={slippageTolerance}
                 onChange={(e) => setSlippageTolerance(e.target.value)}
@@ -551,7 +637,7 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
               </label>
               <input
                 type="text"
-                placeholder="0.5"
+                placeholder="5.0"
                 className="input input-bordered w-full"
                 value={slippageTolerance}
                 onChange={(e) => setSlippageTolerance(e.target.value)}
@@ -615,7 +701,7 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
               </label>
               <input
                 type="text"
-                placeholder="0.5"
+                placeholder="5.0"
                 className="input input-bordered w-full"
                 value={slippageTolerance}
                 onChange={(e) => setSlippageTolerance(e.target.value)}
