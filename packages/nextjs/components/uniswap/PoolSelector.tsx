@@ -69,11 +69,11 @@ const REAL_POOLS: Pool[] = [
     isRealPool: true,
   },
   {
-    address: "0x21b8065d10f73EE2e260e5B47D3344d3Ced7596E" as `0x${string}`, // WISE/WETH Pair
-    token0: "0x66a0f676479Cee1d7373f3DC2e2952778BfF5bd6" as `0x${string}`, // WISE
-    token1: "0xfff9976782d46cc05630d1f6ebab18b2324d6b14" as `0x${string}`, // WETH of Uniswap
-    token0Symbol: "WISE",
-    token1Symbol: "WETH",
+    address: "0x8C1c499b1796D7F3C2521AC37186B52De024e58c" as `0x${string}`, // RAD/USDC Pair
+    token0: "0x31c8EAcBFFdD875c74b94b077895Bd78CF1E64A3" as `0x${string}`, // RAD
+    token1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`, // USDC
+    token0Symbol: "RAD",
+    token1Symbol: "USDC",
     reserve0: BigInt(0), // Initialize to 0, wait for API update
     reserve1: BigInt(0), // Initialize to 0, wait for API update
     fee: 0.003, // 0.3%
