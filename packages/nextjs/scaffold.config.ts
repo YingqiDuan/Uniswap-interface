@@ -29,7 +29,7 @@ const scaffoldConfig = {
   // The key is the chain ID, and the value is the HTTP RPC URL
   rpcOverrides: {
     // Example:
-    // [chains.mainnet.id]: "https://mainnet.buidlguidl.com",
+    [chains.mainnet.id]: "https://eth-mainnet.g.alchemy.com/v2/XtUI816ajgKTl-LrZ1aHNyyaIC3VVuaR",
     [chains.sepolia.id]: process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA || `https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || DEFAULT_ALCHEMY_API_KEY}`,
   },
 
