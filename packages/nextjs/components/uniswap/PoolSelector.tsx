@@ -69,9 +69,9 @@ const REAL_POOLS: Pool[] = [
     isRealPool: true,
   },
   {
-    address: "0x8C1c499b1796D7F3C2521AC37186B52De024e58c" as `0x${string}`, // RAD/USDC Pair
-    token0: "0x31c8EAcBFFdD875c74b94b077895Bd78CF1E64A3" as `0x${string}`, // RAD
-    token1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`, // USDC
+    address: "0x7b184F962ae692de4043c2D2700d6aBcbfFD7372" as `0x${string}`, // HELL/USDC Pair
+    token0: "0x10982508Bc60F456d77b70925489c779bbb74357" as `0x${string}`, // HELL
+    token1: "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8" as `0x${string}`, // USDC
     token0Symbol: "RAD",
     token1Symbol: "USDC",
     reserve0: BigInt(0), // Initialize to 0, wait for API update
