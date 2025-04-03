@@ -532,41 +532,36 @@ export const SwapInterface: React.FC<SwapInterfaceProps> = ({ selectedPool }) =>
               if (!wrapAmount || !account) return;
               
               const wethContract = externalContracts[11155111].WETH.address as `0x${string}`;
-              const routerAddress = externalContracts[11155111].UniswapV2Router02.address as `0x${string}`;
+              const wethAbi = [
+                {
+                  "constant": false,
+                  "inputs": [],
+                  "name": "deposit",
+                  "outputs": [],
+                  "payable": true,
+                  "stateMutability": "payable",
+                  "type": "function"
+                }
+              ];
               
-              // 使用Router的addLiquidityETH方法代替swapExactETHForTokens
-              // 这个函数会在内部将ETH转换为WETH
-              
-              // 设置deadline
-              const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20分钟
-              
-              // 这里我们利用Router的addLiquidityETH函数中包含的WETH操作
-              // 我们设置token参数为WETH地址，但设置amountTokenDesired为0
-              // 这样实际上只会执行ETH到WETH的转换部分
-              const swapTx = await writeContractAsync({
-                address: routerAddress,
-                abi: routerAbi,
-                functionName: "addLiquidityETH",
-                args: [
-                  wethContract,           // token address (WETH)
-                  BigInt(0),              // amountTokenDesired (0 - 我们不想添加任何已有的WETH)
-                  BigInt(0),              // amountTokenMin (0 - 最小添加量)
-                  BigInt(0),              // amountETHMin (0 - 允许所有ETH都被使用)
-                  account,                // to address (接收者)
-                  BigInt(deadline)        // deadline
-                ],
-                value: parseUnits(wrapAmount, 18)  // 发送ETH
+              // Execute wrap
+              const wrapTx = await writeContractAsync({
+                address: wethContract,
+                abi: wethAbi,
+                functionName: "deposit",
+                args: [],
+                value: parseUnits(wrapAmount, 18)
               });
               
-              alert("ETH to WETH conversion transaction submitted!");
-              setTxHash(swapTx);
+              alert("Wrapping transaction submitted!");
+              setTxHash(wrapTx);
             } catch (error) {
-              console.error("Error converting ETH to WETH:", error);
-              alert("Failed to convert ETH to WETH. Check console for details.");
+              console.error("Error wrapping ETH:", error);
+              alert("Failed to wrap ETH. Check console for details.");
             }
           }}
         >
-          Convert ETH to WETH
+          Wrap ETH to WETH
         </button>
         
         <div className="text-xs text-center mt-2 opacity-70">
