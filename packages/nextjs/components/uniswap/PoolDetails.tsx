@@ -109,18 +109,30 @@ export const PoolDetails: React.FC<PoolDetailsProps> = ({ selectedPool }) => {
           <div className="stat-value text-lg">{(selectedPool.fee * 100).toFixed(2)}%</div>
         </div>
       </div>
-      <div className="mt-4 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm opacity-60">Pool address:</span>
-          <div className="badge badge-primary font-mono">{selectedPool.address.slice(0, 6)}...{selectedPool.address.slice(-4)}</div>
+      <div className="mt-4 flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Pool address:</span>
+          {selectedPool.isRealPool ? (
+            <div className="text-xs font-mono bg-base-200 p-2 rounded overflow-auto">{selectedPool.address}</div>
+          ) : (
+            <div className="badge badge-primary font-mono">{selectedPool.address.slice(0, 6)}...{selectedPool.address.slice(-4)}</div>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm opacity-60">{selectedPool.token0Symbol} address:</span>
-          <div className="badge badge-secondary font-mono">{selectedPool.token0.slice(0, 6)}...{selectedPool.token0.slice(-4)}</div>
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">{selectedPool.token0Symbol} address:</span>
+          {selectedPool.isRealPool ? (
+            <div className="text-xs font-mono bg-base-200 p-2 rounded overflow-auto">{selectedPool.token0}</div>
+          ) : (
+            <div className="badge badge-secondary font-mono">{selectedPool.token0.slice(0, 6)}...{selectedPool.token0.slice(-4)}</div>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm opacity-60">{selectedPool.token1Symbol} address:</span>
-          <div className="badge badge-secondary font-mono">{selectedPool.token1.slice(0, 6)}...{selectedPool.token1.slice(-4)}</div>
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">{selectedPool.token1Symbol} address:</span>
+          {selectedPool.isRealPool ? (
+            <div className="text-xs font-mono bg-base-200 p-2 rounded overflow-auto">{selectedPool.token1}</div>
+          ) : (
+            <div className="badge badge-secondary font-mono">{selectedPool.token1.slice(0, 6)}...{selectedPool.token1.slice(-4)}</div>
+          )}
         </div>
       </div>
     </div>

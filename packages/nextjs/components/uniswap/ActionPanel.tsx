@@ -749,21 +749,37 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       {selectedPool && (
         <div className="mt-4 pt-4 border-t border-base-300">
           <h3 className="font-semibold">Selected Pool</h3>
-          <div className="flex flex-col gap-1 mt-2">
-            <div className="text-sm">
-              <span className="font-medium">Address:</span> 
-              {selectedPool.isRealPool ? (
-                <Address address={selectedPool.address} size="sm" />
-              ) : (
-                <span className="ml-1 font-mono">{selectedPool.address} (simulated)</span>
-              )}
-            </div>
+          <div className="flex flex-col gap-2 mt-2">
             <div className="text-sm">
               <span className="font-medium">Pair:</span> {selectedPool.token0Symbol}/{selectedPool.token1Symbol}
             </div>
             <div className="text-sm">
               <span className="font-medium">Type:</span> {selectedPool.isRealPool ? "Real Pool" : "Simulated Pool"}
             </div>
+            
+            {selectedPool.isRealPool && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">Pool address:</span>
+                  <div className="text-xs font-mono bg-base-200 p-2 rounded overflow-auto">{selectedPool.address}</div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">{selectedPool.token0Symbol} address:</span>
+                  <div className="text-xs font-mono bg-base-200 p-2 rounded overflow-auto">{selectedPool.token0}</div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">{selectedPool.token1Symbol} address:</span>
+                  <div className="text-xs font-mono bg-base-200 p-2 rounded overflow-auto">{selectedPool.token1}</div>
+                </div>
+              </>
+            )}
+            
+            {!selectedPool.isRealPool && (
+              <div className="text-sm">
+                <span className="font-medium">Address:</span> 
+                <span className="ml-1 font-mono">{selectedPool.address} (simulated)</span>
+              </div>
+            )}
           </div>
         </div>
       )}

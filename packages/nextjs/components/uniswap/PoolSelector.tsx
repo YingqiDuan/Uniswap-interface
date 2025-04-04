@@ -343,7 +343,14 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
                 
                 {/* Add debug information */}
                 <div className="mt-2 text-xs opacity-50 font-mono">
-                  <div>Address: {pool.address.slice(0, 8)}...{pool.address.slice(-6)}</div>
+                  {isRealPool ? (
+                    <div>
+                      <div>Address:</div>
+                      <div className="break-all">{pool.address}</div>
+                    </div>
+                  ) : (
+                    <div>Address: {pool.address.slice(0, 8)}...{pool.address.slice(-6)}</div>
+                  )}
                   <div>isRealPool: {isRealPool.toString()}</div>
                 </div>
               </div>
