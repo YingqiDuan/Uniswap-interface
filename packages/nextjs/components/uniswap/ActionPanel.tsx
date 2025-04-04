@@ -309,9 +309,38 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       
       const liquidity = parseEther(redeemAmount);
       
+      console.log("Starting to remove liquidity...");
+      console.log("LP Token address:", selectedPool.address);
+      console.log("LP Token amount to remove:", liquidity.toString());
+      console.log("Current LP allowance:", lpTokenAllowance?.toString() || "unknown");
+      
       // Check if LP token allowance is sufficient
-      if (lpTokenAllowance && lpTokenAllowance < liquidity) {
-        await approveToken(selectedPool.address as `0x${string}`, parseEther("100000000")); // Approve a large amount
+      if (!lpTokenAllowance || lpTokenAllowance < liquidity) {
+        console.log("Approving LP token...");
+        notification.info("Approving LP tokens. Please wait for the transaction to be confirmed.");
+        
+        try {
+          await approveToken(selectedPool.address as `0x${string}`, parseEther("100000000")); // Approve a large amount
+          console.log("LP token approved successfully.");
+          
+          // Wait for 5 seconds to ensure the approval transaction is confirmed
+          console.log("Waiting 5 seconds for approval confirmation...");
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Refetch allowance to verify approval
+          await refetchLpTokenAllowance();
+          console.log("Updated LP allowance after approval:", lpTokenAllowance?.toString() || "unknown");
+          
+          if (!lpTokenAllowance || lpTokenAllowance < liquidity) {
+            notification.warning("LP token approval may not be confirmed yet. Please try again in a moment.");
+            console.warn("LP token approval may not be confirmed yet:", lpTokenAllowance?.toString() || "unknown");
+          }
+        } catch (error) {
+          console.error("Error approving LP token:", error);
+          notification.error("Failed to approve LP token. Cannot proceed with removing liquidity.");
+          setIsLoading(false);
+          return;
+        }
       }
       
       // Calculate min amounts with slippage tolerance
@@ -322,6 +351,8 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       // Set deadline to 20 minutes from now
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
       
+      console.log("Preparing to call removeLiquidity contract function with arguments:");
+      
       if (isEthPair) {
         // ETH pair logic (with WETH)
         console.log("Removing liquidity from WETH token pair...");
@@ -329,13 +360,24 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
         const minTokenAmount = isToken0Weth ? minAmount1 : minAmount0;
         const minEthAmount = isToken0Weth ? minAmount0 : minAmount1;
         
+        const token0 = isToken0Weth ? selectedPool.token0 : tokenAddress;
+        const token1 = isToken0Weth ? tokenAddress : selectedPool.token1;
+        
+        console.log("Token0:", token0);
+        console.log("Token1:", token1);
+        console.log("Liquidity:", liquidity.toString());
+        console.log("MinAmount0:", minAmount0.toString());
+        console.log("MinAmount1:", minAmount1.toString());
+        console.log("To Address:", connectedAddress);
+        console.log("Deadline:", deadline.toString());
+        
         await writeContract({
           address: routerContract.address,
           abi: routerContract.abi,
           functionName: "removeLiquidity",
           args: [
-            isToken0Weth ? selectedPool.token0 : tokenAddress,
-            isToken0Weth ? tokenAddress : selectedPool.token1,
+            token0,
+            token1,
             liquidity,
             minAmount0,
             minAmount1,
@@ -346,6 +388,14 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       } else {
         // Regular token pair logic
         console.log("Removing liquidity from regular token pair...");
+        console.log("Token0:", selectedPool.token0);
+        console.log("Token1:", selectedPool.token1);
+        console.log("Liquidity:", liquidity.toString());
+        console.log("MinAmount0:", minAmount0.toString());
+        console.log("MinAmount1:", minAmount1.toString());
+        console.log("To Address:", connectedAddress);
+        console.log("Deadline:", deadline.toString());
+        
         await writeContract({
           address: routerContract.address,
           abi: routerContract.abi,
