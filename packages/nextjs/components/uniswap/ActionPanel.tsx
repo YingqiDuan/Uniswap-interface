@@ -46,9 +46,9 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
   const { writeContractAsync: writeContract } = useWriteContract();
   
   // Check if we're dealing with ETH/WETH (compare symbols and addresses)
-  const isToken0Weth = selectedPool?.token0Symbol === "WETH";
-  const isToken1Weth = selectedPool?.token1Symbol === "WETH";
-  // 根据实际情况判断是否是ETH对（包含WETH的对）
+  const isToken0Weth = selectedPool?.token0Symbol === "WETH" && selectedPool?.token0 === wethContract?.address;
+  const isToken1Weth = selectedPool?.token1Symbol === "WETH" && selectedPool?.token1 === wethContract?.address;
+  // 根据实际情况判断是否是ETH对（包含真正的WETH的对，不仅是符号匹配，还要地址匹配）
   const isEthPair = isToken0Weth || isToken1Weth; 
   
   // Get token balances
@@ -221,8 +221,8 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
           await approveToken(tokenAddress as `0x${string}`, parseEther("100000000")); // Approve a large amount
         }
         
-        console.log("Adding liquidity with ETH...");
-        // 使用addLiquidity而不是addLiquidityETH，因为我们用的是WETH
+        console.log("Adding liquidity with WETH tokens...");
+        // 使用addLiquidity添加WETH代币对流动性
         await writeContract({
           address: routerContract.address,
           abi: routerContract.abi,
