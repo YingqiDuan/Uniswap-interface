@@ -42,6 +42,7 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
       fill: boolean;
       tension: number;
     }[];
+    isRealData: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -64,16 +65,16 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
         BigInt(10) * BigInt(10 ** 18) : 
         BigInt(1000) * BigInt(10 ** 18);
       
-      generateChartData(defaultReserve0, defaultReserve1);
+      generateChartData(defaultReserve0, defaultReserve1, false);
       return;
     }
 
     // Normal case: use actual reserves
-    generateChartData(reserve0, reserve1);
+    generateChartData(reserve0, reserve1, true);
   }, [selectedPool]);
 
   // Extract curve generation logic into a separate function
-  const generateChartData = (reserve0: bigint, reserve1: bigint) => {
+  const generateChartData = (reserve0: bigint, reserve1: bigint, isRealData = true) => {
     // Calculate constant k = x * y
     const k = reserve0 * reserve1;
 
@@ -127,12 +128,13 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
         {
           label: `${selectedPool?.token1Symbol} Amount`,
           data: points.map(point => point.y),
-          borderColor: "rgba(53, 162, 235, 1)",
-          backgroundColor: "rgba(53, 162, 235, 0.2)",
+          borderColor: isRealData ? "rgba(53, 162, 235, 1)" : "rgba(255, 99, 132, 1)",
+          backgroundColor: isRealData ? "rgba(53, 162, 235, 0.2)" : "rgba(255, 99, 132, 0.2)",
           fill: true,
           tension: 0.4,
         },
       ],
+      isRealData: isRealData
     });
   };
 
@@ -160,6 +162,9 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
       10 ** 18
     ),
   };
+
+  // Check if using real data or simulated
+  const isRealData = chartData.isRealData && selectedPool.reserve0 > 0 && selectedPool.reserve1 > 0;
 
   // Chart options
   const options = {
@@ -237,7 +242,7 @@ export const ReservesCurveChart = ({ selectedPool }: ReservesCurveChartProps) =>
       },
       title: {
         display: true,
-        text: `Constant Product Curve (x * y = k)`,
+        text: `Constant Product Curve (x * y = k)${isRealData ? ' (Real Data)' : ' (Simulated)'}`,
       },
       legend: {
         display: false,
