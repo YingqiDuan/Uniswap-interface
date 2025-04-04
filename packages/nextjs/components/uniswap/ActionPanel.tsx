@@ -323,7 +323,8 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
       
       if (isEthPair) {
-        // ETH pair logic
+        // ETH pair logic (with WETH)
+        console.log("Removing liquidity from WETH token pair...");
         const tokenAddress = isToken0Weth ? selectedPool.token1 : selectedPool.token0;
         const minTokenAmount = isToken0Weth ? minAmount1 : minAmount0;
         const minEthAmount = isToken0Weth ? minAmount0 : minAmount1;
@@ -331,18 +332,20 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
         await writeContract({
           address: routerContract.address,
           abi: routerContract.abi,
-          functionName: "removeLiquidityETH",
+          functionName: "removeLiquidity",
           args: [
-            tokenAddress,
+            isToken0Weth ? selectedPool.token0 : tokenAddress,
+            isToken0Weth ? tokenAddress : selectedPool.token1,
             liquidity,
-            minTokenAmount,
-            minEthAmount,
+            minAmount0,
+            minAmount1,
             connectedAddress,
             deadline,
           ],
         });
       } else {
         // Regular token pair logic
+        console.log("Removing liquidity from regular token pair...");
         await writeContract({
           address: routerContract.address,
           abi: routerContract.abi,
@@ -414,22 +417,32 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       
       // Handle different swap types
       if (isFromETH) {
-        // Swapping from ETH to token
+        // Swapping from WETH token to another token
+        console.log("Swapping from WETH token...");
+        
+        // Check WETH allowance
+        const wethAllowance = swapFromToken === "token0" ? token0Allowance : token1Allowance;
+        if (wethAllowance && wethAllowance < amountIn) {
+          await approveToken(tokenIn as `0x${string}`, parseEther("100000000"));
+        }
+        
         await writeContract({
           address: routerContract.address,
           abi: routerContract.abi,
-          functionName: "swapExactETHForTokens",
+          functionName: "swapExactTokensForTokens",
           args: [
+            amountIn,
             amountOutMin,
-            [wethContract?.address, tokenOut],
+            [tokenIn, tokenOut],
             connectedAddress,
             deadline,
           ],
-          value: amountIn,
         });
       } else if (isToETH) {
-        // Swapping from token to ETH
-        // Check allowance
+        // Swapping from token to WETH token
+        console.log("Swapping to WETH token...");
+        
+        // Check token allowance
         if ((swapFromToken === "token0" && token0Allowance && token0Allowance < amountIn) ||
             (swapFromToken === "token1" && token1Allowance && token1Allowance < amountIn)) {
           await approveToken(tokenIn as `0x${string}`, parseEther("100000000"));
@@ -438,17 +451,19 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
         await writeContract({
           address: routerContract.address,
           abi: routerContract.abi,
-          functionName: "swapExactTokensForETH",
+          functionName: "swapExactTokensForTokens",
           args: [
             amountIn,
             amountOutMin,
-            [tokenIn, wethContract?.address],
+            [tokenIn, tokenOut],
             connectedAddress,
             deadline,
           ],
         });
       } else {
         // Regular token to token swap
+        console.log("Performing regular token swap...");
+        
         // Check allowance
         if ((swapFromToken === "token0" && token0Allowance && token0Allowance < amountIn) ||
             (swapFromToken === "token1" && token1Allowance && token1Allowance < amountIn)) {
