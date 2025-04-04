@@ -31,28 +31,6 @@ const MOCK_POOLS: Pool[] = [
     fee: 0.003, // 0.3%
     isRealPool: false,
   },
-  {
-    address: "0x123mock2" as `0x${string}`,
-    token0: "0x1111111111111111111111111111111111111111" as `0x${string}`,
-    token1: "0x3333333333333333333333333333333333333333" as `0x${string}`,
-    token0Symbol: "ETH",
-    token1Symbol: "DAI",
-    reserve0: BigInt(15) * BigInt(10 ** 18), // 15 ETH
-    reserve1: BigInt(30000) * BigInt(10 ** 18), // 30,000 DAI
-    fee: 0.003, // 0.3%
-    isRealPool: false,
-  },
-  {
-    address: "0x123mock3" as `0x${string}`,
-    token0: "0x4444444444444444444444444444444444444444" as `0x${string}`,
-    token1: "0x1111111111111111111111111111111111111111" as `0x${string}`,
-    token0Symbol: "WBTC",
-    token1Symbol: "ETH",
-    reserve0: BigInt(2) * BigInt(10 ** 8), // 2 WBTC
-    reserve1: BigInt(60) * BigInt(10 ** 18), // 60 ETH
-    fee: 0.003, // 0.3%
-    isRealPool: false,
-  }
 ];
 
 // Real liquidity pools we created on Sepolia
