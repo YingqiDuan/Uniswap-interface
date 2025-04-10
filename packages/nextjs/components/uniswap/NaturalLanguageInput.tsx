@@ -370,6 +370,7 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
         <h2 className="card-title">Natural Language Interaction</h2>
         <p className="text-sm mb-3">
           Enter instructions in natural language like "Swap 0.1 ETH for USDC" or "Add liquidity with 0.5 ETH and 1000 USDC"
+          Remember to approve the token before executing the action.
         </p>
         
         <div className="form-control">
