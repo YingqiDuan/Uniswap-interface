@@ -32,19 +32,19 @@ export async function POST(request: Request) {
       You have the following functions available:
 
       1. swap(fromToken, toToken, amount)
-         - fromToken: The token to swap from (e.g., "ETH", "USDC", "WETH")
-         - toToken: The token to swap to (e.g., "ETH", "USDC", "WETH")
+         - fromToken: The token to swap from (e.g., "ETH", "USDC")
+         - toToken: The token to swap to (e.g., "ETH", "USDC")
          - amount: The amount to swap (e.g., "0.1", "100")
 
       2. addLiquidity(token0, token1, amount0, amount1)
-         - token0: The first token in the pair (e.g., "ETH", "USDC", "WETH")
-         - token1: The second token in the pair (e.g., "ETH", "USDC", "WETH")
+         - token0: The first token in the pair (e.g., "ETH", "USDC")
+         - token1: The second token in the pair (e.g., "ETH", "USDC")
          - amount0: The amount of the first token (e.g., "0.1", "100")
          - amount1: The amount of the second token (e.g., "0.1", "100")
 
       3. removeLiquidity(token0, token1, percent)
-         - token0: The first token in the pair (e.g., "ETH", "USDC", "WETH")
-         - token1: The second token in the pair (e.g., "ETH", "USDC", "WETH")
+         - token0: The first token in the pair (e.g., "ETH", "USDC")
+         - token1: The second token in the pair (e.g., "ETH", "USDC")
          - percent: The percentage of liquidity to remove (e.g., "50", "100")
 
       Current pool information:
@@ -53,11 +53,6 @@ export async function POST(request: Request) {
       - Token1: ${pool.token1Symbol} (${pool.token1})
       - Reserve0: ${pool.reserve0}
       - Reserve1: ${pool.reserve1}
-
-      IMPORTANT: If a user mentions "ETH", use "ETH" in your response.
-      If a user specifically mentions "WETH", use "WETH" in your response.
-      Remember that "ETH" and "WETH" should be treated as separate tokens with different symbols.
-      Only use the exact token symbols that are in the current pool (${pool.token0Symbol} or ${pool.token1Symbol}) or that the user explicitly mentions.
 
       Return your response as a JSON object with the following structure:
       {

@@ -31,8 +31,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
   const { writeContractAsync } = useWriteContract();
   
   // Get contract info
-  const { data: routerContract } = useDeployedContractInfo({contractName: "UniswapV2Router02"});
-  const { data: wethContract } = useDeployedContractInfo({contractName: "WETH"});
+  const { data: routerContract } = useDeployedContractInfo("UniswapV2Router02");
+  const { data: wethContract } = useDeployedContractInfo("WETH");
 
   // Reset pending action when the pool changes
   useEffect(() => {
@@ -118,7 +118,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
       // Deadline for transactions (20 minutes from now)
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
       
-      // Check if we're dealing with ETH/WETH
+      // Check if we're dealing with WETH specifically (not ETH)
+      // WETH只是与ETH 1:1兑换的代币，这里需要区分处理
       const isToken0Weth = selectedPool.token0Symbol === "WETH" && selectedPool.token0 === wethContract?.address;
       const isToken1Weth = selectedPool.token1Symbol === "WETH" && selectedPool.token1 === wethContract?.address;
       
@@ -128,28 +129,31 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const { fromToken, toToken, amount } = pendingAction.parameters;
           console.log("Executing swap:", { fromToken, toToken, amount });
           
-          // 重要修改：区分ETH和WETH
-          // 仅当代币是ETH或与实际WETH合约地址匹配的WETH时才视为ETH
-          const isFromETH = fromToken === "ETH" || 
-                          (fromToken === "WETH" && (
-                            (fromToken === selectedPool.token0Symbol && isToken0Weth) || 
-                            (fromToken === selectedPool.token1Symbol && isToken1Weth)
-                          ));
+          // 明确区分ETH和WETH
+          // 当用户输入ETH时，我们假设他们是想使用原生ETH
+          // 当用户输入WETH时，我们假设他们是想使用WETH代币
+          const isFromETH = fromToken === "ETH"; // 只有明确指定ETH才用原生ETH
+          const isToETH = toToken === "ETH"; // 只有明确指定ETH才接收原生ETH
           
-          const isToETH = toToken === "ETH" || 
-                        (toToken === "WETH" && (
-                          (toToken === selectedPool.token0Symbol && isToken0Weth) || 
-                          (toToken === selectedPool.token1Symbol && isToken1Weth)
-                        ));
+          // 当用户输入WETH时，或者选中的池中有WETH时，正确处理WETH代币地址
+          const fromTokenIsWETH = fromToken === "WETH" || 
+                                (fromToken === selectedPool.token0Symbol && isToken0Weth) ||
+                                (fromToken === selectedPool.token1Symbol && isToken1Weth);
           
-          // Get the actual token addresses
-          const fromTokenAddress = isFromETH 
+          const toTokenIsWETH = toToken === "WETH" || 
+                               (toToken === selectedPool.token0Symbol && isToken0Weth) || 
+                               (toToken === selectedPool.token1Symbol && isToken1Weth);
+          
+          // 获取正确的代币地址
+          // 对于WETH，使用WETH合约地址
+          // 对于其他代币，使用代币地址
+          const fromTokenAddress = fromTokenIsWETH 
             ? wethContract?.address 
             : (fromToken === selectedPool.token0Symbol 
                 ? selectedPool.token0 
                 : selectedPool.token1);
           
-          const toTokenAddress = isToETH 
+          const toTokenAddress = toTokenIsWETH 
             ? wethContract?.address 
             : (toToken === selectedPool.token0Symbol 
                 ? selectedPool.token0 
@@ -163,7 +167,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const amountOutMin = BigInt(Number(amountIn) * 0.95);
           
           if (isFromETH && !isToETH) {
-            // ETH to Token
+            // ETH to Token (使用原生ETH兑换代币)
+            console.log("Using swapExactETHForTokens for ETH -> Token swap");
             await writeContractAsync({
               address: routerContract.address,
               abi: routerContract.abi,
@@ -177,7 +182,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
               value: amountIn
             });
           } else if (!isFromETH && isToETH) {
-            // Token to ETH
+            // Token to ETH (将代币兑换为原生ETH)
+            console.log("Using swapExactTokensForETH for Token -> ETH swap");
             await writeContractAsync({
               address: routerContract.address,
               abi: routerContract.abi,
@@ -191,7 +197,9 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
               ]
             });
           } else {
-            // Token to Token
+            // Token to Token 或 WETH to Token 或 Token to WETH 或 WETH to WETH
+            // 这些情况都使用swapExactTokensForTokens
+            console.log("Using swapExactTokensForTokens for token swap");
             await writeContractAsync({
               address: routerContract.address,
               abi: routerContract.abi,
@@ -214,18 +222,18 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const { token0, token1, amount0, amount1 } = pendingAction.parameters;
           console.log("Executing add liquidity:", { token0, token1, amount0, amount1 });
           
-          // 重要修改：区分ETH和WETH
-          const isToken0ETH = token0 === "ETH" || 
-                           (token0 === "WETH" && (
-                             (token0 === selectedPool.token0Symbol && isToken0Weth) || 
-                             (token0 === selectedPool.token1Symbol && isToken1Weth)
-                           ));
+          // 区分ETH和WETH
+          const isToken0ETH = token0 === "ETH"; // 只有明确指定ETH才用原生ETH
+          const isToken1ETH = token1 === "ETH"; // 只有明确指定ETH才用原生ETH
           
-          const isToken1ETH = token1 === "ETH" || 
-                           (token1 === "WETH" && (
-                             (token1 === selectedPool.token0Symbol && isToken0Weth) || 
-                             (token1 === selectedPool.token1Symbol && isToken1Weth)
-                           ));
+          // 处理WETH代币
+          const token0IsWETH = token0 === "WETH" || 
+                            (token0 === selectedPool.token0Symbol && isToken0Weth) || 
+                            (token0 === selectedPool.token1Symbol && isToken1Weth);
+          
+          const token1IsWETH = token1 === "WETH" || 
+                            (token1 === selectedPool.token0Symbol && isToken0Weth) || 
+                            (token1 === selectedPool.token1Symbol && isToken1Weth);
           
           // Parse amounts with proper decimals (assuming 18 decimals for now)
           const parsedAmount0 = parseUnits(amount0.toString(), 18);
@@ -236,21 +244,22 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const minAmount0 = BigInt(Number(parsedAmount0) * 0.95);
           const minAmount1 = BigInt(Number(parsedAmount1) * 0.95);
           
-          // Get the actual token addresses
-          const token0Address = isToken0ETH 
+          // 获取正确的代币地址
+          const token0Address = token0IsWETH 
             ? wethContract?.address 
             : (token0 === selectedPool.token0Symbol 
                 ? selectedPool.token0 
                 : selectedPool.token1);
           
-          const token1Address = isToken1ETH 
+          const token1Address = token1IsWETH 
             ? wethContract?.address 
             : (token1 === selectedPool.token0Symbol 
                 ? selectedPool.token0 
                 : selectedPool.token1);
           
           if (isToken0ETH || isToken1ETH) {
-            // ETH + Token
+            // 使用ETH + Token添加流动性
+            console.log("Using addLiquidityETH for ETH + Token liquidity");
             const tokenAddress = isToken0ETH ? token1Address : token0Address;
             const ethAmount = isToken0ETH ? parsedAmount0 : parsedAmount1;
             const tokenAmount = isToken0ETH ? parsedAmount1 : parsedAmount0;
@@ -272,7 +281,9 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
               value: ethAmount
             });
           } else {
-            // Token + Token
+            // Token + Token 或 WETH + Token 或 WETH + WETH
+            // 这些情况都使用addLiquidity
+            console.log("Using addLiquidity for token + token liquidity");
             await writeContractAsync({
               address: routerContract.address,
               abi: routerContract.abi,
@@ -298,27 +309,27 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const { token0, token1, percent } = pendingAction.parameters;
           console.log("Executing remove liquidity:", { token0, token1, percent });
           
-          // 重要修改：区分ETH和WETH
-          const isToken0ETH = token0 === "ETH" || 
-                           (token0 === "WETH" && (
-                             (token0 === selectedPool.token0Symbol && isToken0Weth) || 
-                             (token0 === selectedPool.token1Symbol && isToken1Weth)
-                           ));
+          // 区分ETH和WETH
+          const isToken0ETH = token0 === "ETH"; // 只有明确指定ETH才用原生ETH
+          const isToken1ETH = token1 === "ETH"; // 只有明确指定ETH才用原生ETH
           
-          const isToken1ETH = token1 === "ETH" || 
-                           (token1 === "WETH" && (
-                             (token1 === selectedPool.token0Symbol && isToken0Weth) || 
-                             (token1 === selectedPool.token1Symbol && isToken1Weth)
-                           ));
+          // 处理WETH代币
+          const token0IsWETH = token0 === "WETH" || 
+                            (token0 === selectedPool.token0Symbol && isToken0Weth) || 
+                            (token0 === selectedPool.token1Symbol && isToken1Weth);
           
-          // Get the actual token addresses
-          const token0Address = isToken0ETH 
+          const token1IsWETH = token1 === "WETH" || 
+                            (token1 === selectedPool.token0Symbol && isToken0Weth) || 
+                            (token1 === selectedPool.token1Symbol && isToken1Weth);
+          
+          // 获取正确的代币地址
+          const token0Address = token0IsWETH 
             ? wethContract?.address 
             : (token0 === selectedPool.token0Symbol 
                 ? selectedPool.token0 
                 : selectedPool.token1);
           
-          const token1Address = isToken1ETH 
+          const token1Address = token1IsWETH 
             ? wethContract?.address 
             : (token1 === selectedPool.token0Symbol 
                 ? selectedPool.token0 
@@ -335,7 +346,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const minToken1 = BigInt(1);
           
           if (isToken0ETH || isToken1ETH) {
-            // ETH + Token
+            // 提取流动性为ETH和代币
+            console.log("Using removeLiquidityETH for removing ETH + Token liquidity");
             const tokenAddress = isToken0ETH ? token1Address : token0Address;
             const minTokenAmount = isToken0ETH ? minToken1 : minToken0;
             const minEthAmount = isToken0ETH ? minToken0 : minToken1;
@@ -354,7 +366,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
               ]
             });
           } else {
-            // Token + Token
+            // 提取流动性为代币和代币 (包括WETH)
+            console.log("Using removeLiquidity for removing token + token liquidity");
             await writeContractAsync({
               address: routerContract.address,
               abi: routerContract.abi,
