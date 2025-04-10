@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { parseUnits } from "viem";
 import { notification } from "~~/utils/scaffold-eth";
 import { type Pool } from "./PoolSelector";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useWriteContract, useReadContract } from "wagmi";
 import { useDeployedContractInfo } from "~~/hooks/scaffold-eth";
 
 interface NaturalLanguageInputProps {
@@ -33,11 +33,34 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
   // Get contract info
   const { data: routerContract } = useDeployedContractInfo("UniswapV2Router02");
   const { data: wethContract } = useDeployedContractInfo("WETH");
+  const { data: factoryContract } = useDeployedContractInfo("UniswapV2Factory");
 
   // Reset pending action when the pool changes
   useEffect(() => {
     setPendingAction(null);
   }, [selectedPool]);
+
+  // 计算交易的输出金额（考虑滑点）
+  const calculateOutputAmount = (inputAmount: bigint, inputReserve: bigint, outputReserve: bigint, slippage: number): bigint => {
+    if (inputReserve === BigInt(0) || outputReserve === BigInt(0)) {
+      return BigInt(0);
+    }
+    
+    // 根据x*y=k公式计算输出金额
+    // outputAmount = (outputReserve * inputAmount) / (inputReserve + inputAmount)
+    const inputAmountWithFee = inputAmount * BigInt(997); // 0.3% 交易费
+    const numerator = inputAmountWithFee * outputReserve;
+    const denominator = (inputReserve * BigInt(1000)) + inputAmountWithFee;
+    let outputAmount = numerator / denominator;
+    
+    // 应用滑点保护，将最小输出金额设为理论输出的(1-slippage)
+    outputAmount = outputAmount * BigInt(Math.floor((1 - slippage) * 10000)) / BigInt(10000);
+    
+    console.log(`计算输出金额: 输入=${inputAmount}, 输入储备=${inputReserve}, 输出储备=${outputReserve}`);
+    console.log(`理论输出金额: ${outputAmount}`);
+    
+    return outputAmount;
+  };
 
   // Handle natural language processing
   const handleProcessInput = async () => {
@@ -140,9 +163,29 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           // 解析输入金额 (假设18位小数)
           const amountIn = parseUnits(amount.toString(), 18);
           
-          // 5% 滑点保护
-          const slippagePercent = 0.05;
-          const amountOutMin = BigInt(Number(amountIn) * 0.95);
+          // 获取池中的储备量，用于计算输出金额
+          let inputReserve: bigint;
+          let outputReserve: bigint;
+          
+          if (fromToken === selectedPool.token0Symbol) {
+            inputReserve = selectedPool.reserve0;
+            outputReserve = selectedPool.reserve1;
+          } else {
+            inputReserve = selectedPool.reserve1;
+            outputReserve = selectedPool.reserve0;
+          }
+          
+          // 计算最小输出金额（考虑5%的滑点）
+          const slippagePercent = 0.05; // 5% 滑点保护
+          const amountOutMin = calculateOutputAmount(amountIn, inputReserve, outputReserve, slippagePercent);
+          
+          console.log(`Swap details: 输入金额=${amountIn}, 输入代币=${fromToken}, 输出代币=${toToken}`);
+          console.log(`滑点设置: ${slippagePercent * 100}%`);
+          console.log(`最小输出金额: ${amountOutMin}`);
+          
+          // 如果计算的输出金额为0，设置一个非常小的值，允许交易进行
+          // 这通常表示我们没有足够的储备数据来准确计算
+          const finalAmountOutMin = amountOutMin > 0 ? amountOutMin : BigInt(1);
           
           // 统一使用swapExactTokensForTokens处理所有情况
           // 这样与UI界面上的交互行为保持一致
@@ -153,7 +196,7 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
             functionName: 'swapExactTokensForTokens',
             args: [
               amountIn,
-              amountOutMin,
+              finalAmountOutMin, // 使用计算出的最小输出金额
               [fromTokenAddress, toTokenAddress],
               connectedAddress,
               deadline
@@ -182,8 +225,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const parsedAmount1 = parseUnits(amount1.toString(), 18);
           
           // 5% 滑点保护
-          const minAmount0 = BigInt(Number(parsedAmount0) * 0.95);
-          const minAmount1 = BigInt(Number(parsedAmount1) * 0.95);
+          const minAmount0 = parsedAmount0 * BigInt(95) / BigInt(100);
+          const minAmount1 = parsedAmount1 * BigInt(95) / BigInt(100);
           
           // 统一使用addLiquidity处理所有情况
           console.log("Using addLiquidity for all liquidity additions");
