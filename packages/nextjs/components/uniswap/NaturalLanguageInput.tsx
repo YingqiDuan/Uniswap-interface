@@ -115,20 +115,11 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
     setIsExecuting(true);
     
     try {
-      console.log("Starting execution with data:", {
-        pool: selectedPool,
-        action: pendingAction,
-        routerAddress: routerContract.address,
-        userAddress: connectedAddress
-      });
-
       // Deadline for transactions (20 minutes from now)
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
       
-      // Check if we're dealing with WETH specifically (not ETH)
-      // WETH只是与ETH 1:1兑换的代币，这里需要区分处理
-      const isToken0Weth = selectedPool.token0Symbol === "WETH" && selectedPool.token0 === wethContract?.address;
-      const isToken1Weth = selectedPool.token1Symbol === "WETH" && selectedPool.token1 === wethContract?.address;
+      // 获取WETH合约地址用于路径构建
+      const wethAddress = wethContract?.address as `0x${string}`;
       
       // Process based on action type
       switch (pendingAction.function) {
@@ -136,151 +127,38 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const { fromToken, toToken, amount } = pendingAction.parameters;
           console.log("Executing swap:", { fromToken, toToken, amount });
           
-          // 明确区分ETH和WETH
-          // 当用户输入ETH时，我们假设他们是想使用原生ETH
-          // 当用户输入WETH时，我们假设他们是想使用WETH代币
-          const isFromETH = fromToken === "ETH"; // 只有明确指定ETH才用原生ETH
-          const isToETH = toToken === "ETH"; // 只有明确指定ETH才接收原生ETH
+          // 获取代币地址 - 不区分ETH和WETH，全部作为代币处理
+          // 这样可以确保和UI中的交互逻辑一致
+          const fromTokenAddress = fromToken === selectedPool.token0Symbol 
+            ? selectedPool.token0 
+            : selectedPool.token1;
           
-          // 当用户输入WETH时，或者选中的池中有WETH时，正确处理WETH代币地址
-          const fromTokenIsWETH = fromToken === "WETH" || 
-                                (fromToken === selectedPool.token0Symbol && isToken0Weth) ||
-                                (fromToken === selectedPool.token1Symbol && isToken1Weth);
+          const toTokenAddress = toToken === selectedPool.token0Symbol 
+            ? selectedPool.token0 
+            : selectedPool.token1;
           
-          const toTokenIsWETH = toToken === "WETH" || 
-                               (toToken === selectedPool.token0Symbol && isToken0Weth) || 
-                               (toToken === selectedPool.token1Symbol && isToken1Weth);
+          // 解析输入金额 (假设18位小数)
+          const amountIn = parseUnits(amount.toString(), 18);
           
-          // 获取正确的代币地址
-          // 对于WETH，使用WETH合约地址
-          // 对于其他代币，使用代币地址
-          const fromTokenAddress = fromTokenIsWETH 
-            ? wethContract?.address 
-            : (fromToken === selectedPool.token0Symbol 
-                ? selectedPool.token0 
-                : selectedPool.token1);
-          
-          const toTokenAddress = toTokenIsWETH 
-            ? wethContract?.address 
-            : (toToken === selectedPool.token0Symbol 
-                ? selectedPool.token0 
-                : selectedPool.token1);
-          
-          // 改进精度处理
-          const getDecimals = (symbol: string) => {
-            if (symbol === "WBTC") return 8;
-            if (symbol === "USDC" || symbol === "USDT") return 6;
-            return 18; // 默认18位精度
-          };
-
-          // 然后在解析金额时使用正确的精度
-          const amountIn = parseUnits(amount.toString(), getDecimals(fromToken));
-          
-          // 5% slippage
+          // 5% 滑点保护
           const slippagePercent = 0.05;
           const amountOutMin = BigInt(Number(amountIn) * 0.95);
           
-          // 添加授权检查
-          if (!isFromETH) {  // 只有代币(非ETH)需要approve
-            // 检查授权
-            try {
-              console.log("Checking and approving token allowance...");
-              
-              // 获取ERC20授权接口
-              const erc20Abi = [
-                {
-                  "constant": false,
-                  "inputs": [
-                    { "name": "_spender", "type": "address" },
-                    { "name": "_value", "type": "uint256" }
-                  ],
-                  "name": "approve",
-                  "outputs": [{ "name": "", "type": "bool" }],
-                  "payable": false,
-                  "stateMutability": "nonpayable",
-                  "type": "function"
-                },
-                {
-                  "constant": true,
-                  "inputs": [
-                    { "name": "_owner", "type": "address" },
-                    { "name": "_spender", "type": "address" }
-                  ],
-                  "name": "allowance",
-                  "outputs": [{ "name": "", "type": "uint256" }],
-                  "payable": false,
-                  "stateMutability": "view",
-                  "type": "function"
-                }
-              ];
-              
-              // 授权Router合约使用代币
-              await writeContractAsync({
-                address: fromTokenAddress as `0x${string}`,
-                abi: erc20Abi,
-                functionName: 'approve',
-                args: [
-                  routerContract.address,
-                  amountIn * BigInt(2)  // 授权2倍金额，避免授权不足
-                ]
-              });
-              
-              console.log("Token approved successfully");
-            } catch (error) {
-              console.error("Error approving token:", error);
-              notification.error("Failed to approve token");
-              setIsExecuting(false);
-              return;
-            }
-          }
-          
-          if (isFromETH && !isToETH) {
-            // ETH to Token (使用原生ETH兑换代币)
-            console.log("Using swapExactETHForTokens for ETH -> Token swap");
-            await writeContractAsync({
-              address: routerContract.address,
-              abi: routerContract.abi,
-              functionName: 'swapExactETHForTokens',
-              args: [
-                amountOutMin,
-                [wethContract?.address, toTokenAddress],
-                connectedAddress,
-                deadline
-              ],
-              value: amountIn
-            });
-          } else if (!isFromETH && isToETH) {
-            // Token to ETH (将代币兑换为原生ETH)
-            console.log("Using swapExactTokensForETH for Token -> ETH swap");
-            await writeContractAsync({
-              address: routerContract.address,
-              abi: routerContract.abi,
-              functionName: 'swapExactTokensForETH',
-              args: [
-                amountIn,
-                amountOutMin,
-                [fromTokenAddress, wethContract?.address],
-                connectedAddress,
-                deadline
-              ]
-            });
-          } else {
-            // Token to Token 或 WETH to Token 或 Token to WETH 或 WETH to WETH
-            // 这些情况都使用swapExactTokensForTokens
-            console.log("Using swapExactTokensForTokens for token swap");
-            await writeContractAsync({
-              address: routerContract.address,
-              abi: routerContract.abi,
-              functionName: 'swapExactTokensForTokens',
-              args: [
-                amountIn,
-                amountOutMin,
-                [fromTokenAddress, toTokenAddress],
-                connectedAddress,
-                deadline
-              ]
-            });
-          }
+          // 统一使用swapExactTokensForTokens处理所有情况
+          // 这样与UI界面上的交互行为保持一致
+          console.log("Using swapExactTokensForTokens for all swaps");
+          await writeContractAsync({
+            address: routerContract.address,
+            abi: routerContract.abi,
+            functionName: 'swapExactTokensForTokens',
+            args: [
+              amountIn,
+              amountOutMin,
+              [fromTokenAddress, toTokenAddress],
+              connectedAddress,
+              deadline
+            ]
+          });
           
           notification.success("Swap executed successfully");
           break;
@@ -290,84 +168,40 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const { token0, token1, amount0, amount1 } = pendingAction.parameters;
           console.log("Executing add liquidity:", { token0, token1, amount0, amount1 });
           
-          // 区分ETH和WETH
-          const isToken0ETH = token0 === "ETH"; // 只有明确指定ETH才用原生ETH
-          const isToken1ETH = token1 === "ETH"; // 只有明确指定ETH才用原生ETH
+          // 获取代币地址 - 不区分ETH和WETH，全部作为代币处理
+          const token0Address = token0 === selectedPool.token0Symbol 
+            ? selectedPool.token0 
+            : selectedPool.token1;
           
-          // 处理WETH代币
-          const token0IsWETH = token0 === "WETH" || 
-                            (token0 === selectedPool.token0Symbol && isToken0Weth) || 
-                            (token0 === selectedPool.token1Symbol && isToken1Weth);
+          const token1Address = token1 === selectedPool.token0Symbol 
+            ? selectedPool.token0 
+            : selectedPool.token1;
           
-          const token1IsWETH = token1 === "WETH" || 
-                            (token1 === selectedPool.token0Symbol && isToken0Weth) || 
-                            (token1 === selectedPool.token1Symbol && isToken1Weth);
-          
-          // Parse amounts with proper decimals (assuming 18 decimals for now)
+          // 解析金额 (假设18位小数)
           const parsedAmount0 = parseUnits(amount0.toString(), 18);
           const parsedAmount1 = parseUnits(amount1.toString(), 18);
           
-          // 5% slippage
-          const slippagePercent = 0.05;
+          // 5% 滑点保护
           const minAmount0 = BigInt(Number(parsedAmount0) * 0.95);
           const minAmount1 = BigInt(Number(parsedAmount1) * 0.95);
           
-          // 获取正确的代币地址
-          const token0Address = token0IsWETH 
-            ? wethContract?.address 
-            : (token0 === selectedPool.token0Symbol 
-                ? selectedPool.token0 
-                : selectedPool.token1);
-          
-          const token1Address = token1IsWETH 
-            ? wethContract?.address 
-            : (token1 === selectedPool.token0Symbol 
-                ? selectedPool.token0 
-                : selectedPool.token1);
-          
-          if (isToken0ETH || isToken1ETH) {
-            // 使用ETH + Token添加流动性
-            console.log("Using addLiquidityETH for ETH + Token liquidity");
-            const tokenAddress = isToken0ETH ? token1Address : token0Address;
-            const ethAmount = isToken0ETH ? parsedAmount0 : parsedAmount1;
-            const tokenAmount = isToken0ETH ? parsedAmount1 : parsedAmount0;
-            const minTokenAmount = isToken0ETH ? minAmount1 : minAmount0;
-            const minEthAmount = isToken0ETH ? minAmount0 : minAmount1;
-            
-            await writeContractAsync({
-              address: routerContract.address,
-              abi: routerContract.abi,
-              functionName: 'addLiquidityETH',
-              args: [
-                tokenAddress,
-                tokenAmount,
-                minTokenAmount,
-                minEthAmount,
-                connectedAddress,
-                deadline
-              ],
-              value: ethAmount
-            });
-          } else {
-            // Token + Token 或 WETH + Token 或 WETH + WETH
-            // 这些情况都使用addLiquidity
-            console.log("Using addLiquidity for token + token liquidity");
-            await writeContractAsync({
-              address: routerContract.address,
-              abi: routerContract.abi,
-              functionName: 'addLiquidity',
-              args: [
-                token0Address,
-                token1Address,
-                parsedAmount0,
-                parsedAmount1,
-                minAmount0,
-                minAmount1,
-                connectedAddress,
-                deadline
-              ]
-            });
-          }
+          // 统一使用addLiquidity处理所有情况
+          console.log("Using addLiquidity for all liquidity additions");
+          await writeContractAsync({
+            address: routerContract.address,
+            abi: routerContract.abi,
+            functionName: 'addLiquidity',
+            args: [
+              token0Address,
+              token1Address,
+              parsedAmount0,
+              parsedAmount1,
+              minAmount0,
+              minAmount1,
+              connectedAddress,
+              deadline
+            ]
+          });
           
           notification.success("Liquidity added successfully");
           break;
@@ -377,80 +211,41 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const { token0, token1, percent } = pendingAction.parameters;
           console.log("Executing remove liquidity:", { token0, token1, percent });
           
-          // 区分ETH和WETH
-          const isToken0ETH = token0 === "ETH"; // 只有明确指定ETH才用原生ETH
-          const isToken1ETH = token1 === "ETH"; // 只有明确指定ETH才用原生ETH
+          // 获取代币地址 - 不区分ETH和WETH，全部作为代币处理
+          const token0Address = token0 === selectedPool.token0Symbol 
+            ? selectedPool.token0 
+            : selectedPool.token1;
           
-          // 处理WETH代币
-          const token0IsWETH = token0 === "WETH" || 
-                            (token0 === selectedPool.token0Symbol && isToken0Weth) || 
-                            (token0 === selectedPool.token1Symbol && isToken1Weth);
+          const token1Address = token1 === selectedPool.token0Symbol 
+            ? selectedPool.token0 
+            : selectedPool.token1;
           
-          const token1IsWETH = token1 === "WETH" || 
-                            (token1 === selectedPool.token0Symbol && isToken0Weth) || 
-                            (token1 === selectedPool.token1Symbol && isToken1Weth);
-          
-          // 获取正确的代币地址
-          const token0Address = token0IsWETH 
-            ? wethContract?.address 
-            : (token0 === selectedPool.token0Symbol 
-                ? selectedPool.token0 
-                : selectedPool.token1);
-          
-          const token1Address = token1IsWETH 
-            ? wethContract?.address 
-            : (token1 === selectedPool.token0Symbol 
-                ? selectedPool.token0 
-                : selectedPool.token1);
-          
-          // We need to get the user's LP token balance to calculate how much to remove
-          // For now, we'll use a placeholder value
-          const liquidityAmount = BigInt(1000000000000000000); // 1 LP token as example
+          // 我们需要获取用户的LP代币余额来计算移除数量
+          // 这里暂时使用固定值
+          const liquidityAmount = BigInt(1000000000000000000); // 1个LP代币示例
           const percentToRemove = Number(percent) / 100;
           const liquidityToRemove = BigInt(Number(liquidityAmount) * percentToRemove);
           
-          // Minimum amounts (with 5% slippage)
+          // 最小返回金额 (5% 滑点保护)
           const minToken0 = BigInt(1);
           const minToken1 = BigInt(1);
           
-          if (isToken0ETH || isToken1ETH) {
-            // 提取流动性为ETH和代币
-            console.log("Using removeLiquidityETH for removing ETH + Token liquidity");
-            const tokenAddress = isToken0ETH ? token1Address : token0Address;
-            const minTokenAmount = isToken0ETH ? minToken1 : minToken0;
-            const minEthAmount = isToken0ETH ? minToken0 : minToken1;
-            
-            await writeContractAsync({
-              address: routerContract.address,
-              abi: routerContract.abi,
-              functionName: 'removeLiquidityETH',
-              args: [
-                tokenAddress,
-                liquidityToRemove,
-                minTokenAmount,
-                minEthAmount,
-                connectedAddress,
-                deadline
-              ]
-            });
-          } else {
-            // 提取流动性为代币和代币 (包括WETH)
-            console.log("Using removeLiquidity for removing token + token liquidity");
-            await writeContractAsync({
-              address: routerContract.address,
-              abi: routerContract.abi,
-              functionName: 'removeLiquidity',
-              args: [
-                token0Address,
-                token1Address,
-                liquidityToRemove,
-                minToken0,
-                minToken1,
-                connectedAddress,
-                deadline
-              ]
-            });
-          }
+          // 统一使用removeLiquidity处理所有情况
+          console.log("Using removeLiquidity for all liquidity removals");
+          await writeContractAsync({
+            address: routerContract.address,
+            abi: routerContract.abi,
+            functionName: 'removeLiquidity',
+            args: [
+              token0Address,
+              token1Address,
+              liquidityToRemove,
+              minToken0,
+              minToken1,
+              connectedAddress,
+              deadline
+            ]
+          });
           
           notification.success("Liquidity removed successfully");
           break;
