@@ -115,6 +115,13 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
     setIsExecuting(true);
     
     try {
+      console.log("Starting execution with data:", {
+        pool: selectedPool,
+        action: pendingAction,
+        routerAddress: routerContract.address,
+        userAddress: connectedAddress
+      });
+
       // Deadline for transactions (20 minutes from now)
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
       
@@ -159,12 +166,73 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
                 ? selectedPool.token0 
                 : selectedPool.token1);
           
-          // Parse the amount with proper decimals (assuming 18 decimals for now)
-          const amountIn = parseUnits(amount.toString(), 18);
+          // 改进精度处理
+          const getDecimals = (symbol: string) => {
+            if (symbol === "WBTC") return 8;
+            if (symbol === "USDC" || symbol === "USDT") return 6;
+            return 18; // 默认18位精度
+          };
+
+          // 然后在解析金额时使用正确的精度
+          const amountIn = parseUnits(amount.toString(), getDecimals(fromToken));
           
           // 5% slippage
           const slippagePercent = 0.05;
           const amountOutMin = BigInt(Number(amountIn) * 0.95);
+          
+          // 添加授权检查
+          if (!isFromETH) {  // 只有代币(非ETH)需要approve
+            // 检查授权
+            try {
+              console.log("Checking and approving token allowance...");
+              
+              // 获取ERC20授权接口
+              const erc20Abi = [
+                {
+                  "constant": false,
+                  "inputs": [
+                    { "name": "_spender", "type": "address" },
+                    { "name": "_value", "type": "uint256" }
+                  ],
+                  "name": "approve",
+                  "outputs": [{ "name": "", "type": "bool" }],
+                  "payable": false,
+                  "stateMutability": "nonpayable",
+                  "type": "function"
+                },
+                {
+                  "constant": true,
+                  "inputs": [
+                    { "name": "_owner", "type": "address" },
+                    { "name": "_spender", "type": "address" }
+                  ],
+                  "name": "allowance",
+                  "outputs": [{ "name": "", "type": "uint256" }],
+                  "payable": false,
+                  "stateMutability": "view",
+                  "type": "function"
+                }
+              ];
+              
+              // 授权Router合约使用代币
+              await writeContractAsync({
+                address: fromTokenAddress as `0x${string}`,
+                abi: erc20Abi,
+                functionName: 'approve',
+                args: [
+                  routerContract.address,
+                  amountIn * BigInt(2)  // 授权2倍金额，避免授权不足
+                ]
+              });
+              
+              console.log("Token approved successfully");
+            } catch (error) {
+              console.error("Error approving token:", error);
+              notification.error("Failed to approve token");
+              setIsExecuting(false);
+              return;
+            }
+          }
           
           if (isFromETH && !isToETH) {
             // ETH to Token (使用原生ETH兑换代币)
