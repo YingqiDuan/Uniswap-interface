@@ -7,6 +7,7 @@ import { ReservesCurveChart } from "./ReservesCurveChart";
 import { SwapHistoryChart } from "./SwapHistoryChart";
 import { SwapInterface } from "./SwapInterface";
 import { ActionPanel } from "./ActionPanel";
+import { NaturalLanguageInput } from "./NaturalLanguageInput";
 import { notification } from "~~/utils/scaffold-eth";
 
 const Dashboard = () => {
@@ -83,7 +84,8 @@ const Dashboard = () => {
               2. View pool details and reserve curve <br />
               3. Simulate token exchanges on the right <br />
               4. Use the action panel to add/remove liquidity and swap <br />
-              5. Observe changes in the constant product curve (x·y=k)
+              5. Observe changes in the constant product curve (x·y=k) <br />
+              6. Try natural language commands below!
             </p>
           </div>
         </div>
@@ -113,6 +115,10 @@ const Dashboard = () => {
             <SwapHistoryChart selectedPool={selectedPool} />
           </div>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <NaturalLanguageInput selectedPool={selectedPool} onActionComplete={handleActionComplete} />
       </div>
       
       {selectedPool?.isRealPool && (
