@@ -31,8 +31,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
   const { writeContractAsync } = useWriteContract();
   
   // Get contract info
-  const { data: routerContract } = useDeployedContractInfo("UniswapV2Router02");
-  const { data: wethContract } = useDeployedContractInfo("WETH");
+  const { data: routerContract } = useDeployedContractInfo({contractName: "UniswapV2Router02"});
+  const { data: wethContract } = useDeployedContractInfo({contractName: "WETH"});
 
   // Reset pending action when the pool changes
   useEffect(() => {
@@ -128,14 +128,19 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const { fromToken, toToken, amount } = pendingAction.parameters;
           console.log("Executing swap:", { fromToken, toToken, amount });
           
-          // Determine token addresses and if dealing with ETH
-          const isFromETH = fromToken === "ETH" || fromToken === "WETH" || 
-                          (fromToken === selectedPool.token0Symbol && isToken0Weth) || 
-                          (fromToken === selectedPool.token1Symbol && isToken1Weth);
+          // 重要修改：区分ETH和WETH
+          // 仅当代币是ETH或与实际WETH合约地址匹配的WETH时才视为ETH
+          const isFromETH = fromToken === "ETH" || 
+                          (fromToken === "WETH" && (
+                            (fromToken === selectedPool.token0Symbol && isToken0Weth) || 
+                            (fromToken === selectedPool.token1Symbol && isToken1Weth)
+                          ));
           
-          const isToETH = toToken === "ETH" || toToken === "WETH" || 
-                        (toToken === selectedPool.token0Symbol && isToken0Weth) || 
-                        (toToken === selectedPool.token1Symbol && isToken1Weth);
+          const isToETH = toToken === "ETH" || 
+                        (toToken === "WETH" && (
+                          (toToken === selectedPool.token0Symbol && isToken0Weth) || 
+                          (toToken === selectedPool.token1Symbol && isToken1Weth)
+                        ));
           
           // Get the actual token addresses
           const fromTokenAddress = isFromETH 
@@ -209,14 +214,18 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const { token0, token1, amount0, amount1 } = pendingAction.parameters;
           console.log("Executing add liquidity:", { token0, token1, amount0, amount1 });
           
-          // Determine if we're dealing with ETH
-          const isToken0ETH = token0 === "ETH" || token0 === "WETH" || 
-                           (token0 === selectedPool.token0Symbol && isToken0Weth) || 
-                           (token0 === selectedPool.token1Symbol && isToken1Weth);
+          // 重要修改：区分ETH和WETH
+          const isToken0ETH = token0 === "ETH" || 
+                           (token0 === "WETH" && (
+                             (token0 === selectedPool.token0Symbol && isToken0Weth) || 
+                             (token0 === selectedPool.token1Symbol && isToken1Weth)
+                           ));
           
-          const isToken1ETH = token1 === "ETH" || token1 === "WETH" || 
-                           (token1 === selectedPool.token0Symbol && isToken0Weth) || 
-                           (token1 === selectedPool.token1Symbol && isToken1Weth);
+          const isToken1ETH = token1 === "ETH" || 
+                           (token1 === "WETH" && (
+                             (token1 === selectedPool.token0Symbol && isToken0Weth) || 
+                             (token1 === selectedPool.token1Symbol && isToken1Weth)
+                           ));
           
           // Parse amounts with proper decimals (assuming 18 decimals for now)
           const parsedAmount0 = parseUnits(amount0.toString(), 18);
@@ -289,14 +298,18 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
           const { token0, token1, percent } = pendingAction.parameters;
           console.log("Executing remove liquidity:", { token0, token1, percent });
           
-          // Determine if we're dealing with ETH
-          const isToken0ETH = token0 === "ETH" || token0 === "WETH" || 
-                           (token0 === selectedPool.token0Symbol && isToken0Weth) || 
-                           (token0 === selectedPool.token1Symbol && isToken1Weth);
+          // 重要修改：区分ETH和WETH
+          const isToken0ETH = token0 === "ETH" || 
+                           (token0 === "WETH" && (
+                             (token0 === selectedPool.token0Symbol && isToken0Weth) || 
+                             (token0 === selectedPool.token1Symbol && isToken1Weth)
+                           ));
           
-          const isToken1ETH = token1 === "ETH" || token1 === "WETH" || 
-                           (token1 === selectedPool.token0Symbol && isToken0Weth) || 
-                           (token1 === selectedPool.token1Symbol && isToken1Weth);
+          const isToken1ETH = token1 === "ETH" || 
+                           (token1 === "WETH" && (
+                             (token1 === selectedPool.token0Symbol && isToken0Weth) || 
+                             (token1 === selectedPool.token1Symbol && isToken1Weth)
+                           ));
           
           // Get the actual token addresses
           const token0Address = isToken0ETH 
