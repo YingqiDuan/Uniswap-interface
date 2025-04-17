@@ -167,9 +167,6 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       
       // 记录当前参数
       console.log("Adding liquidity with params:");
-      console.log("isEthPair:", isEthPair);
-      console.log("isToken0Weth:", isToken0Weth);
-      console.log("isToken1Weth:", isToken1Weth);
       console.log("Token0:", selectedPool.token0Symbol, selectedPool.token0);
       console.log("Token1:", selectedPool.token1Symbol, selectedPool.token1);
       console.log("Amount0:", depositAmount0);
@@ -183,7 +180,7 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       console.log("Parsed amount0:", amount0.toString());
       console.log("Parsed amount1:", amount1.toString());
       
-      // 更慷慨的滑点设置 - 提高成功率
+      // 计算滑点设置
       const slippagePercent = Math.max(parseFloat(slippageTolerance), 5) / 100; // 至少5%滑点
       console.log("Using slippage percentage:", slippagePercent * 100, "%");
       
@@ -197,62 +194,41 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       // Set deadline to 20 minutes from now
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
       
-      // 如果是与ETH/WETH的交易对
-      if (isEthPair) {
-        console.log("Using ETH pair logic");
-        // ETH pair logic (one token is WETH)
-        const tokenAddress = isToken0Weth ? selectedPool.token1 : selectedPool.token0;
-        const tokenAmount = isToken0Weth ? amount1 : amount0;
-        const tokenAllowance = isToken0Weth ? token1Allowance : token0Allowance;
-        const ethAmount = isToken0Weth ? amount0 : amount1;
-        const minTokenAmount = isToken0Weth ? minAmount1 : minAmount0;
-        const minEthAmount = isToken0Weth ? minAmount0 : minAmount1;
-        
-        console.log("Token address:", tokenAddress);
-        console.log("Token amount:", tokenAmount.toString());
-        console.log("Token allowance:", tokenAllowance?.toString() || "unknown");
-        console.log("ETH amount:", ethAmount.toString());
-        console.log("Min token amount:", minTokenAmount.toString());
-        console.log("Min ETH amount:", minEthAmount.toString());
-        
-        // 检查代币授权
-        if (tokenAllowance && tokenAllowance < tokenAmount) {
-          console.log("Approving token...");
-          await approveToken(tokenAddress as `0x${string}`, parseEther("100000000")); // Approve a large amount
-        }
-        
-        console.log("Adding liquidity with WETH tokens...");
-        // 使用addLiquidity添加WETH代币对流动性
-        await writeContract({
-          address: routerContract.address,
-          abi: routerContract.abi,
-          functionName: "addLiquidity",
-          args: [
-            isToken0Weth ? selectedPool.token0 : tokenAddress,
-            isToken0Weth ? tokenAddress : selectedPool.token1,
-            amount0,
-            amount1,
-            minAmount0,
-            minAmount1,
-            connectedAddress,
-            deadline,
-          ],
-        });
-      } else {
-        console.log("Using regular token pair logic");
-        // Regular token pair logic
-        if (token0Allowance && token0Allowance < amount0) {
-          console.log("Approving token0...");
-          await approveToken(selectedPool.token0 as `0x${string}`, parseEther("100000000")); // Approve a large amount
-        }
-        
-        if (token1Allowance && token1Allowance < amount1) {
-          console.log("Approving token1...");
-          await approveToken(selectedPool.token1 as `0x${string}`, parseEther("100000000")); // Approve a large amount
-        }
-        
-        console.log("Adding liquidity for regular token pair...");
-        console.log("Args:", [
+      // 检查代币授权 - 所有代币都需要授权
+      console.log("Checking allowances...");
+      console.log("Token0 allowance:", token0Allowance?.toString() || "unknown");
+      console.log("Token1 allowance:", token1Allowance?.toString() || "unknown");
+      
+      // 检查并授权 token0
+      if (token0Allowance && token0Allowance < amount0) {
+        console.log("Approving token0...");
+        await approveToken(selectedPool.token0 as `0x${string}`, parseEther("100000000")); // Approve a large amount
+      }
+      
+      // 检查并授权 token1
+      if (token1Allowance && token1Allowance < amount1) {
+        console.log("Approving token1...");
+        await approveToken(selectedPool.token1 as `0x${string}`, parseEther("100000000")); // Approve a large amount
+      }
+      
+      console.log("Adding liquidity for token pair...");
+      console.log("Args:", [
+        selectedPool.token0,
+        selectedPool.token1,
+        amount0,
+        amount1,
+        minAmount0,
+        minAmount1,
+        connectedAddress,
+        deadline,
+      ]);
+      
+      // 对所有代币对使用 addLiquidity，不区分ETH/非ETH
+      await writeContract({
+        address: routerContract.address,
+        abi: routerContract.abi,
+        functionName: "addLiquidity",
+        args: [
           selectedPool.token0,
           selectedPool.token1,
           amount0,
@@ -261,24 +237,8 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
           minAmount1,
           connectedAddress,
           deadline,
-        ]);
-        
-        await writeContract({
-          address: routerContract.address,
-          abi: routerContract.abi,
-          functionName: "addLiquidity",
-          args: [
-            selectedPool.token0,
-            selectedPool.token1,
-            amount0,
-            amount1,
-            minAmount0,
-            minAmount1,
-            connectedAddress,
-            deadline,
-          ],
-        });
-      }
+        ],
+      });
       
       notification.success("Liquidity added successfully!");
       setDepositAmount0("");
@@ -352,65 +312,29 @@ export const ActionPanel = ({ selectedPool, onActionComplete }: ActionPanelProps
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
       
       console.log("Preparing to call removeLiquidity contract function with arguments:");
+      console.log("Token0:", selectedPool.token0);
+      console.log("Token1:", selectedPool.token1);
+      console.log("Liquidity:", liquidity.toString());
+      console.log("MinAmount0:", minAmount0.toString());
+      console.log("MinAmount1:", minAmount1.toString());
+      console.log("To Address:", connectedAddress);
+      console.log("Deadline:", deadline.toString());
       
-      if (isEthPair) {
-        // ETH pair logic (with WETH)
-        console.log("Removing liquidity from WETH token pair...");
-        const tokenAddress = isToken0Weth ? selectedPool.token1 : selectedPool.token0;
-        const minTokenAmount = isToken0Weth ? minAmount1 : minAmount0;
-        const minEthAmount = isToken0Weth ? minAmount0 : minAmount1;
-        
-        const token0 = isToken0Weth ? selectedPool.token0 : tokenAddress;
-        const token1 = isToken0Weth ? tokenAddress : selectedPool.token1;
-        
-        console.log("Token0:", token0);
-        console.log("Token1:", token1);
-        console.log("Liquidity:", liquidity.toString());
-        console.log("MinAmount0:", minAmount0.toString());
-        console.log("MinAmount1:", minAmount1.toString());
-        console.log("To Address:", connectedAddress);
-        console.log("Deadline:", deadline.toString());
-        
-        await writeContract({
-          address: routerContract.address,
-          abi: routerContract.abi,
-          functionName: "removeLiquidity",
-          args: [
-            token0,
-            token1,
-            liquidity,
-            minAmount0,
-            minAmount1,
-            connectedAddress,
-            deadline,
-          ],
-        });
-      } else {
-        // Regular token pair logic
-        console.log("Removing liquidity from regular token pair...");
-        console.log("Token0:", selectedPool.token0);
-        console.log("Token1:", selectedPool.token1);
-        console.log("Liquidity:", liquidity.toString());
-        console.log("MinAmount0:", minAmount0.toString());
-        console.log("MinAmount1:", minAmount1.toString());
-        console.log("To Address:", connectedAddress);
-        console.log("Deadline:", deadline.toString());
-        
-        await writeContract({
-          address: routerContract.address,
-          abi: routerContract.abi,
-          functionName: "removeLiquidity",
-          args: [
-            selectedPool.token0,
-            selectedPool.token1,
-            liquidity,
-            minAmount0,
-            minAmount1,
-            connectedAddress,
-            deadline,
-          ],
-        });
-      }
+      // 对所有代币对使用removeLiquidity，不区分ETH/非ETH
+      await writeContract({
+        address: routerContract.address,
+        abi: routerContract.abi,
+        functionName: "removeLiquidity",
+        args: [
+          selectedPool.token0,
+          selectedPool.token1,
+          liquidity,
+          minAmount0,
+          minAmount1,
+          connectedAddress,
+          deadline,
+        ],
+      });
       
       notification.success("Liquidity removed successfully!");
       setRedeemAmount("");
