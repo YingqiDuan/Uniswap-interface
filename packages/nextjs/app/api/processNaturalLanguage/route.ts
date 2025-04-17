@@ -39,8 +39,9 @@ export async function POST(request: Request) {
       2. addLiquidity(token0, token1, amount0, amount1)
          - token0: The first token in the pair (e.g., "ETH", "USDC")
          - token1: The second token in the pair (e.g., "ETH", "USDC")
-         - amount0: The amount of the first token (e.g., "0.1", "100")
-         - amount1: The amount of the second token (e.g., "0.1", "100")
+         - amount0: The amount of the first token (e.g., "0.1", "100") - if only this is provided, amount1 will be calculated based on current pool ratio
+         - amount1: The amount of the second token (e.g., "0.1", "100") - if only this is provided, amount0 will be calculated based on current pool ratio
+         - Note: You can provide either both amounts or just one amount. If only one is provided, the other will be calculated automatically.
 
       3. removeLiquidity(token0, token1, percent)
          - token0: The first token in the pair (e.g., "ETH", "USDC")

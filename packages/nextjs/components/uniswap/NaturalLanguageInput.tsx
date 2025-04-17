@@ -220,13 +220,63 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
             ? selectedPool.token0 
             : selectedPool.token1;
           
-          // 解析金额 (假设18位小数)
-          const parsedAmount0 = parseUnits(amount0.toString(), 18);
-          const parsedAmount1 = parseUnits(amount1.toString(), 18);
+          // 确定代币对应的储备量
+          let token0Reserve: bigint;
+          let token1Reserve: bigint;
+          
+          if (token0 === selectedPool.token0Symbol) {
+            token0Reserve = selectedPool.reserve0;
+            token1Reserve = selectedPool.reserve1;
+          } else {
+            token0Reserve = selectedPool.reserve1;
+            token1Reserve = selectedPool.reserve0;
+          }
+          
+          // 处理只提供一种代币金额的情况
+          let parsedAmount0: bigint;
+          let parsedAmount1: bigint;
+          
+          if (amount0 && !amount1) {
+            // 只提供了token0的金额，计算token1的金额
+            parsedAmount0 = parseUnits(amount0.toString(), 18);
+            // amount1 = amount0 * (reserve1 / reserve0)
+            if (token0Reserve === BigInt(0)) {
+              notification.error("Cannot calculate amount: Insufficient pool reserves");
+              setIsExecuting(false);
+              return;
+            }
+            parsedAmount1 = (parsedAmount0 * token1Reserve) / token0Reserve;
+            console.log(`自动计算token1金额: ${parsedAmount1} (基于token0金额: ${parsedAmount0})`);
+          } else if (amount1 && !amount0) {
+            // 只提供了token1的金额，计算token0的金额
+            parsedAmount1 = parseUnits(amount1.toString(), 18);
+            // amount0 = amount1 * (reserve0 / reserve1)
+            if (token1Reserve === BigInt(0)) {
+              notification.error("Cannot calculate amount: Insufficient pool reserves");
+              setIsExecuting(false);
+              return;
+            }
+            parsedAmount0 = (parsedAmount1 * token0Reserve) / token1Reserve;
+            console.log(`自动计算token0金额: ${parsedAmount0} (基于token1金额: ${parsedAmount1})`);
+          } else if (amount0 && amount1) {
+            // 两种代币金额都提供了
+            parsedAmount0 = parseUnits(amount0.toString(), 18);
+            parsedAmount1 = parseUnits(amount1.toString(), 18);
+          } else {
+            // 两种代币金额都未提供
+            notification.error("Cannot add liquidity: No token amounts provided");
+            setIsExecuting(false);
+            return;
+          }
           
           // 5% 滑点保护
           const minAmount0 = parsedAmount0 * BigInt(95) / BigInt(100);
           const minAmount1 = parsedAmount1 * BigInt(95) / BigInt(100);
+          
+          // 在UI上显示两种代币的最终金额
+          const finalAmount0Display = parsedAmount0.toString();
+          const finalAmount1Display = parsedAmount1.toString();
+          console.log(`最终添加流动性: ${finalAmount0Display} ${token0} 和 ${finalAmount1Display} ${token1}`);
           
           // 统一使用addLiquidity处理所有情况
           console.log("Using addLiquidity for all liquidity additions");
@@ -330,9 +380,16 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
       case 'swap':
         description = `Swap ${parameters.amount} ${parameters.fromToken} for ${parameters.toToken}`;
         break;
-      case 'addLiquidity':
-        description = `Add liquidity with ${parameters.amount0} ${parameters.token0} and ${parameters.amount1} ${parameters.token1}`;
+      case 'addLiquidity': {
+        if (parameters.amount0 && parameters.amount1) {
+          description = `Add liquidity with ${parameters.amount0} ${parameters.token0} and ${parameters.amount1} ${parameters.token1}`;
+        } else if (parameters.amount0 && !parameters.amount1) {
+          description = `Add liquidity with ${parameters.amount0} ${parameters.token0} (${parameters.token1} amount will be calculated automatically)`;
+        } else if (!parameters.amount0 && parameters.amount1) {
+          description = `Add liquidity with ${parameters.amount1} ${parameters.token1} (${parameters.token0} amount will be calculated automatically)`;
+        }
         break;
+      }
       case 'removeLiquidity':
         description = `Remove ${parameters.percent}% of liquidity from ${parameters.token0}/${parameters.token1} pool`;
         break;
@@ -370,6 +427,10 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
         <h2 className="card-title">Natural Language Interaction</h2>
         <p className="text-sm mb-3">
           Enter instructions in natural language like "Swap 0.1 ETH for USDC" or "Add liquidity with 0.5 ETH and 1000 USDC"
+        </p>
+        <p className="text-sm text-info mb-3">
+          For adding liquidity, you can specify just one token amount like "Add liquidity with 0.5 ETH to ETH/USDC pool" 
+          and the other amount will be automatically calculated based on the current pool ratio.
         </p>
         <p>Remember to approve the token before executing the action.</p>
         
