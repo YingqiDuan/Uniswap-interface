@@ -43,10 +43,13 @@ export async function POST(request: Request) {
          - amount1: The amount of the second token (e.g., "0.1", "100") - if only this is provided, amount0 will be calculated based on current pool ratio
          - Note: You can provide either both amounts or just one amount. If only one is provided, the other will be calculated automatically.
 
-      3. removeLiquidity(token0, token1, percent)
+      3. removeLiquidity(token0, token1, percent, amount0, amount1)
          - token0: The first token in the pair (e.g., "ETH", "USDC")
          - token1: The second token in the pair (e.g., "ETH", "USDC")
-         - percent: The percentage of liquidity to remove (e.g., "50", "100")
+         - percent: The percentage of liquidity to remove (e.g., "50", "100") - used when user wants to remove a percentage of their liquidity
+         - amount0: The amount of token0 to withdraw (e.g., "0.1", "100") - if only this is provided, percent will be calculated based on token0 amount
+         - amount1: The amount of token1 to withdraw (e.g., "0.1", "100") - if only this is provided, percent will be calculated based on token1 amount
+         - Note: You must provide either 'percent' OR one of 'amount0'/'amount1', but not both. If a token amount is provided, the system will calculate the needed percentage to withdraw that amount.
 
       Current pool information:
       - Pool Address: ${pool.address}

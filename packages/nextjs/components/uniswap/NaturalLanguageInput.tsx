@@ -301,8 +301,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
         }
         
         case 'removeLiquidity': {
-          const { token0, token1, percent } = pendingAction.parameters;
-          console.log("Executing remove liquidity:", { token0, token1, percent });
+          const { token0, token1, percent, amount0, amount1 } = pendingAction.parameters;
+          console.log("Executing remove liquidity:", { token0, token1, percent, amount0, amount1 });
           
           // 获取代币地址 - 不区分ETH和WETH，全部作为代币处理
           const token0Address = token0 === selectedPool.token0Symbol 
@@ -313,18 +313,93 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
             ? selectedPool.token0 
             : selectedPool.token1;
           
-          // 我们需要获取用户的LP代币余额来计算移除数量
-          // 这里暂时使用固定值
-          const liquidityAmount = BigInt(1000000000000000000); // 1个LP代币示例
-          const percentToRemove = Number(percent) / 100;
-          const liquidityToRemove = BigInt(Number(liquidityAmount) * percentToRemove);
+          // 确定代币对应的储备量
+          let token0Reserve: bigint;
+          let token1Reserve: bigint;
+          
+          if (token0 === selectedPool.token0Symbol) {
+            token0Reserve = selectedPool.reserve0;
+            token1Reserve = selectedPool.reserve1;
+          } else {
+            token0Reserve = selectedPool.reserve1;
+            token1Reserve = selectedPool.reserve0;
+          }
+          
+          // 获取LP代币总量（这里使用一个假设值，实际应该从合约中查询）
+          // 实际应用中，应该调用 pair 合约的 totalSupply() 函数
+          const totalLpTokenSupply = BigInt(1000000000000000000); // 1个LP代币示例
+          
+          // 当前用户的LP代币余额（这里使用假设值，实际应该从合约中查询）
+          // 实际应用中，应该调用 pair 合约的 balanceOf(account) 函数
+          const userLpTokenBalance = BigInt(1000000000000000000); // 假设用户有1个LP代币
+          
+          let percentToRemove: number;
+          let liquidityToRemove: bigint;
+          
+          // 计算移除的百分比
+          if (percent) {
+            // 如果指定了百分比，直接使用
+            percentToRemove = Number(percent) / 100;
+            liquidityToRemove = BigInt(Number(userLpTokenBalance) * percentToRemove);
+            console.log(`基于百分比 ${percent}% 移除流动性: ${liquidityToRemove}`);
+          } else if (amount0 || amount1) {
+            // 如果指定了代币数量，计算需要移除的百分比
+            if (amount0) {
+              // 基于token0的数量计算
+              const parsedAmount0 = parseUnits(amount0.toString(), 18);
+              
+              // 计算token0在整个池中的占比
+              // token0在整个池子中对应的LP代币数量 = totalLpTokenSupply * (parsedAmount0 / token0Reserve)
+              if (token0Reserve === BigInt(0)) {
+                notification.error("Cannot calculate percentage: Insufficient pool reserves");
+                setIsExecuting(false);
+                return;
+              }
+              
+              // 计算要移除的百分比
+              const requiredLpToken = (parsedAmount0 * totalLpTokenSupply) / token0Reserve;
+              percentToRemove = Number(requiredLpToken * BigInt(100) / userLpTokenBalance) / 100;
+              
+              // 确保百分比不超过100%
+              percentToRemove = Math.min(percentToRemove, 1.0);
+              liquidityToRemove = BigInt(Number(userLpTokenBalance) * percentToRemove);
+              
+              console.log(`基于token0数量 ${amount0} 计算百分比: ${percentToRemove * 100}%`);
+              console.log(`移除流动性: ${liquidityToRemove}`);
+            } else {
+              // 基于token1的数量计算
+              const parsedAmount1 = parseUnits(amount1.toString(), 18);
+              
+              // 计算token1在整个池中的占比
+              if (token1Reserve === BigInt(0)) {
+                notification.error("Cannot calculate percentage: Insufficient pool reserves");
+                setIsExecuting(false);
+                return;
+              }
+              
+              // 计算要移除的百分比
+              const requiredLpToken = (parsedAmount1 * totalLpTokenSupply) / token1Reserve;
+              percentToRemove = Number(requiredLpToken * BigInt(100) / userLpTokenBalance) / 100;
+              
+              // 确保百分比不超过100%
+              percentToRemove = Math.min(percentToRemove, 1.0);
+              liquidityToRemove = BigInt(Number(userLpTokenBalance) * percentToRemove);
+              
+              console.log(`基于token1数量 ${amount1} 计算百分比: ${percentToRemove * 100}%`);
+              console.log(`移除流动性: ${liquidityToRemove}`);
+            }
+          } else {
+            notification.error("Cannot remove liquidity: No percentage or token amount provided");
+            setIsExecuting(false);
+            return;
+          }
           
           // 最小返回金额 (5% 滑点保护)
           const minToken0 = BigInt(1);
           const minToken1 = BigInt(1);
           
           // 统一使用removeLiquidity处理所有情况
-          console.log("Using removeLiquidity for all liquidity removals");
+          console.log(`使用removeLiquidity移除 ${percentToRemove * 100}% 的流动性`);
           await writeContractAsync({
             address: routerContract.address,
             abi: routerContract.abi,
@@ -390,9 +465,18 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
         }
         break;
       }
-      case 'removeLiquidity':
-        description = `Remove ${parameters.percent}% of liquidity from ${parameters.token0}/${parameters.token1} pool`;
+      case 'removeLiquidity': {
+        if (parameters.percent) {
+          description = `Remove ${parameters.percent}% of liquidity from ${parameters.token0}/${parameters.token1} pool`;
+        } else if (parameters.amount0 && !parameters.amount1) {
+          description = `Remove ${parameters.amount0} ${parameters.token0} from ${parameters.token0}/${parameters.token1} pool (percentage will be calculated automatically)`;
+        } else if (!parameters.amount0 && parameters.amount1) {
+          description = `Remove ${parameters.amount1} ${parameters.token1} from ${parameters.token0}/${parameters.token1} pool (percentage will be calculated automatically)`;
+        } else if (parameters.amount0 && parameters.amount1) {
+          description = `Remove ${parameters.amount0} ${parameters.token0} and ${parameters.amount1} ${parameters.token1} from pool`;
+        }
         break;
+      }
     }
     
     return (
@@ -431,6 +515,10 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({ sele
         <p className="text-sm text-info mb-3">
           For adding liquidity, you can specify just one token amount like "Add liquidity with 0.5 ETH to ETH/USDC pool" 
           and the other amount will be automatically calculated based on the current pool ratio.
+        </p>
+        <p className="text-sm text-info mb-3">
+          For removing liquidity, you can now specify a token amount instead of percentage, like "Remove 0.1 ETH from ETH/USDC pool"
+          and the system will calculate the appropriate percentage to withdraw.
         </p>
         <p>Remember to approve the token before executing the action.</p>
         
