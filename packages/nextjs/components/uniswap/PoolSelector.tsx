@@ -46,17 +46,17 @@ const REAL_POOLS: Pool[] = [
     fee: 0.003, // 0.3%
     isRealPool: true,
   },
-  {
-    address: "0x95364bfCb031C5972BE0Cec280e4301C65992F84" as `0x${string}`, // SecondToken/WETH Pair
-    token0: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14" as `0x${string}`, // WETH
-    token1: "0x944eeEb269Db1829366791CE583a127dB9CEe422" as `0x${string}`, // SecondToken
-    token0Symbol: "WETH",
-    token1Symbol: "SECOND",
-    reserve0: BigInt(0), // Initialize to 0, wait for API update
-    reserve1: BigInt(0), // Initialize to 0, wait for API update
-    fee: 0.003, // 0.3%
-    isRealPool: true,
-  },
+  // {
+  //   address: "0x95364bfCb031C5972BE0Cec280e4301C65992F84" as `0x${string}`, // SecondToken/WETH Pair
+  //   token0: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14" as `0x${string}`, // WETH
+  //   token1: "0x944eeEb269Db1829366791CE583a127dB9CEe422" as `0x${string}`, // SecondToken
+  //   token0Symbol: "WETH",
+  //   token1Symbol: "SECOND",
+  //   reserve0: BigInt(0), // Initialize to 0, wait for API update
+  //   reserve1: BigInt(0), // Initialize to 0, wait for API update
+  //   fee: 0.003, // 0.3%
+  //   isRealPool: true,
+  // },
   {
     address: "0x7b184F962ae692de4043c2D2700d6aBcbfFD7372" as `0x${string}`, // HELL/USDC Pair
     token0: "0x10982508Bc60F456d77b70925489c779bbb74357" as `0x${string}`, // HELL
