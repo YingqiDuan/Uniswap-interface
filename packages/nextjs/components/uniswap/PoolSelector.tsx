@@ -40,7 +40,18 @@ const REAL_POOLS: Pool[] = [
     token0: "0x22cD43F525494c87edB678cBbc7F99baEc7eC39B" as `0x${string}`, // TestToken
     token1: "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9" as `0x${string}`, // WETH
     token0Symbol: "TEST",
-    token1Symbol: "WETH",
+    token1Symbol: "GreenWETH",
+    reserve0: BigInt(0), // Initialize to 0, wait for API update
+    reserve1: BigInt(0), // Initialize to 0, wait for API update
+    fee: 0.003, // 0.3%
+    isRealPool: true,
+  },
+  {
+    address: "0x95364bfCb031C5972BE0Cec280e4301C65992F84" as `0x${string}`, // SecondToken/WETH Pair
+    token0: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14" as `0x${string}`, // WETH
+    token1: "0x944eeEb269Db1829366791CE583a127dB9CEe422" as `0x${string}`, // SecondToken
+    token0Symbol: "WETH",
+    token1Symbol: "SECOND",
     reserve0: BigInt(0), // Initialize to 0, wait for API update
     reserve1: BigInt(0), // Initialize to 0, wait for API update
     fee: 0.003, // 0.3%
@@ -225,6 +236,9 @@ export const PoolSelector = ({ selectedPool, setSelectedPool }: PoolSelectorProp
         // Increase WETH decimal places to ensure small value can be displayed correctly
         decimals = 8;
       } else if (symbol === "TEST") {
+        divisor = BigInt(10 ** 18);
+        decimals = 2;
+      } else if (symbol === "SECOND") {
         divisor = BigInt(10 ** 18);
         decimals = 2;
       }
