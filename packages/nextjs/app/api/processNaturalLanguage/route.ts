@@ -1,13 +1,74 @@
 import { NextResponse } from 'next/server';
 
+// 大语言模型服务类 - 分离OpenAI和自定义URL的处理逻辑
+class LLMService {
+  static async processWithOpenAI(input: string, systemPrompt: string, apiKey: string) {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: input }
+        ],
+        temperature: 0.2,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`OpenAI API error: ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content || '';
+  }
+
+  static async processWithCustomURL(input: string, systemPrompt: string, customURL: string, apiKey?: string) {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const response = await fetch(customURL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: input }
+        ],
+        temperature: 0.2
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Custom LLM API error: ${JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || data.response || '';
+  }
+}
+
 // Get OpenAI API key from environment variable
 const defaultOpenaiApiKey = process.env.OPENAI_API_KEY;
+const defaultCustomLLMUrl = process.env.CUSTOM_LLM_URL;
 
 export async function POST(request: Request) {
   try {
     // Parse the request body
     const body = await request.json();
-    const { input, pool, apiKey } = body;
+    const { input, pool, apiKey, customLLMUrl } = body;
 
     if (!input) {
       return NextResponse.json(
@@ -25,6 +86,7 @@ export async function POST(request: Request) {
 
     // Use provided API key or fall back to the default one
     const openaiApiKey = apiKey || defaultOpenaiApiKey;
+    const llmUrl = customLLMUrl || defaultCustomLLMUrl;
 
     // Create a system prompt with information about available functions
     const systemPrompt = `
@@ -72,41 +134,28 @@ export async function POST(request: Request) {
       }
     `;
     
-    // Check if OpenAI API key is available
-    if (!openaiApiKey) {
-      console.error('OpenAI API key is not configured');
-      return NextResponse.json(
-        { success: false, message: 'LLM service is not configured' },
-        { status: 500 }
-      );
-    }
-
-    // Call OpenAI API using fetch instead of the OpenAI package
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiApiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: input }
-          ],
-          temperature: 0.2,
-          response_format: { type: "json_object" }
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`OpenAI API error: ${JSON.stringify(errorData)}`);
+      // 根据是否有自定义URL决定使用哪个处理方法
+      let llmResponseContent;
+      if (llmUrl) {
+        // 使用自定义URL处理
+        if (!llmUrl) {
+          return NextResponse.json(
+            { success: false, message: 'Custom LLM URL is not configured' },
+            { status: 500 }
+          );
+        }
+        llmResponseContent = await LLMService.processWithCustomURL(input, systemPrompt, llmUrl, apiKey);
+      } else {
+        // 使用OpenAI处理
+        if (!openaiApiKey) {
+          return NextResponse.json(
+            { success: false, message: 'OpenAI API key is not configured' },
+            { status: 500 }
+          );
+        }
+        llmResponseContent = await LLMService.processWithOpenAI(input, systemPrompt, openaiApiKey);
       }
-
-      const data = await response.json();
-      const llmResponseContent = data.choices[0].message.content || '';
       
       // Parse the LLM response
       const parsedResponse = JSON.parse(llmResponseContent);
@@ -154,7 +203,7 @@ export async function POST(request: Request) {
       });
       
     } catch (error) {
-      console.error('Error calling OpenAI API:', error);
+      console.error('Error calling LLM API:', error);
       return NextResponse.json(
         { success: false, message: 'Error calling language model API' },
         { status: 500 }
