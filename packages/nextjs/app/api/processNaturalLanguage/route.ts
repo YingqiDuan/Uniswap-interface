@@ -38,25 +38,60 @@ class LLMService {
       headers['Authorization'] = `Bearer ${apiKey}`;
     }
 
-    const response = await fetch(customURL, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: input }
-        ],
-        temperature: 0.2
-      })
-    });
+    // vLLM服务使用OpenAI兼容的接口
+    // 注意: 使用/v1/chat/completions端点
+    const endpoint = customURL.endsWith('/v1/chat/completions') 
+      ? customURL 
+      : `${customURL.replace(/\/$/, '')}/v1/chat/completions`;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Custom LLM API error: ${JSON.stringify(errorData)}`);
+    console.log(`Calling custom LLM at endpoint: ${endpoint}`);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: 'default', // vLLM服务通常不需要指定模型，但需要保留这个字段
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: input }
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Custom LLM error response:', errorText);
+        throw new Error(`Custom LLM API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Custom LLM response data:', JSON.stringify(data));
+      
+      // 处理不同格式的响应
+      if (data.choices && data.choices.length > 0 && data.choices[0].message) {
+        // OpenAI兼容格式
+        return data.choices[0].message.content || '';
+      } else if (data.response) {
+        // 某些自定义格式
+        return data.response;
+      } else if (typeof data.output === 'string') {
+        // 另一种自定义格式
+        return data.output;
+      } else if (typeof data === 'string') {
+        // 直接返回字符串
+        return data;
+      }
+      
+      // 找不到有效的响应内容
+      console.error('Unexpected LLM response format:', data);
+      throw new Error('Unable to parse LLM response: unexpected format');
+    } catch (error) {
+      console.error('Error calling custom LLM:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || data.response || '';
   }
 }
 
@@ -135,20 +170,20 @@ export async function POST(request: Request) {
     `;
     
     try {
+      // 记录请求信息
+      console.log(`Processing natural language request: "${input}"`);
+      console.log(`Using ${llmUrl ? 'custom LLM URL' : 'OpenAI API'}`);
+      
       // 根据是否有自定义URL决定使用哪个处理方法
       let llmResponseContent;
       if (llmUrl) {
         // 使用自定义URL处理
-        if (!llmUrl) {
-          return NextResponse.json(
-            { success: false, message: 'Custom LLM URL is not configured' },
-            { status: 500 }
-          );
-        }
+        console.log(`Using custom LLM URL: ${llmUrl}`);
         llmResponseContent = await LLMService.processWithCustomURL(input, systemPrompt, llmUrl, apiKey);
       } else {
         // 使用OpenAI处理
         if (!openaiApiKey) {
+          console.error('No OpenAI API key available');
           return NextResponse.json(
             { success: false, message: 'OpenAI API key is not configured' },
             { status: 500 }
@@ -157,8 +192,20 @@ export async function POST(request: Request) {
         llmResponseContent = await LLMService.processWithOpenAI(input, systemPrompt, openaiApiKey);
       }
       
-      // Parse the LLM response
-      const parsedResponse = JSON.parse(llmResponseContent);
+      console.log(`LLM response content: ${llmResponseContent}`);
+      
+      // 确保响应是有效的JSON
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(llmResponseContent);
+      } catch (parseError) {
+        console.error('Failed to parse LLM response as JSON:', parseError);
+        console.error('Raw response:', llmResponseContent);
+        return NextResponse.json(
+          { success: false, message: 'Invalid LLM response format: not valid JSON' },
+          { status: 500 }
+        );
+      }
       
       // Check if the response contains an error
       if (parsedResponse.error) {
@@ -205,7 +252,7 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error('Error calling LLM API:', error);
       return NextResponse.json(
-        { success: false, message: 'Error calling language model API' },
+        { success: false, message: `Error calling language model API: ${error instanceof Error ? error.message : String(error)}` },
         { status: 500 }
       );
     }
