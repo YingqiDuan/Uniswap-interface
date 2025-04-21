@@ -34,15 +34,18 @@ class LLMService {
       'Content-Type': 'application/json'
     };
     
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`;
-    }
+    // 使用提供的API密钥或默认值
+    const actualApiKey = apiKey || "neu-3e21der1trt341!f";
+    headers['Authorization'] = `Bearer ${actualApiKey}`;
 
-    // vLLM服务使用OpenAI兼容的接口
-    // 注意: 使用/v1/chat/completions端点
-    const endpoint = customURL.endsWith('/v1/chat/completions') 
-      ? customURL 
-      : `${customURL.replace(/\/$/, '')}/v1/chat/completions`;
+    // 从customURL中提取基础URL
+    // 如果用户提供完整URL，使用它；否则构建基础URL
+    const baseUrl = customURL.includes('/v1') 
+      ? customURL.substring(0, customURL.indexOf('/v1') + 3)
+      : customURL.replace(/\/$/, '') + '/v1';
+    
+    // 确保使用/v1/chat/completions端点
+    const endpoint = `${baseUrl}/chat/completions`;
 
     console.log(`Calling custom LLM at endpoint: ${endpoint}`);
 
@@ -51,13 +54,13 @@ class LLMService {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          model: 'default', // vLLM服务通常不需要指定模型，但需要保留这个字段
+          model: "Meta-Llama-3.1-8B-Instruct-quantized.w4a16", // 使用示例中的模型名称
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: input }
           ],
-          temperature: 0.2,
-          response_format: { type: "json_object" }
+          temperature: 0.2
+          // 不使用response_format，兼容更多模型
         })
       });
 
@@ -121,7 +124,9 @@ export async function POST(request: Request) {
 
     // Use provided API key or fall back to the default one
     const openaiApiKey = apiKey || defaultOpenaiApiKey;
-    const llmUrl = customLLMUrl || defaultCustomLLMUrl;
+    // 如果customLLMUrl未定义，则使用环境变量；如果环境变量也未定义，默认设为Modal.run URL
+    const defaultModalUrl = "https://neu-info5100-oak-spr-2025--example-vllm-openai-compatible-serve.modal.run/v1";
+    const llmUrl = customLLMUrl || defaultCustomLLMUrl || defaultModalUrl;
 
     // Create a system prompt with information about available functions
     const systemPrompt = `
@@ -148,6 +153,8 @@ export async function POST(request: Request) {
          - amount1: The amount of token1 to withdraw (e.g., "0.1", "100") - if only this is provided, percent will be calculated based on token1 amount
          - Note: You must provide either 'percent' OR one of 'amount0'/'amount1', but not both. If a token amount is provided, the system will calculate the needed percentage to withdraw that amount.
 
+      Important: You MUST return a valid JSON object with either a 'function' and 'parameters' fields, or an 'error' field. Your entire response must be valid JSON and nothing else.
+
       Current pool information:
       - Pool Address: ${pool.address}
       - Token0: ${pool.token0Symbol} (${pool.token0})
@@ -172,24 +179,21 @@ export async function POST(request: Request) {
     try {
       // 记录请求信息
       console.log(`Processing natural language request: "${input}"`);
-      console.log(`Using ${llmUrl ? 'custom LLM URL' : 'OpenAI API'}`);
+      console.log(`Using LLM URL: ${llmUrl}`);
       
-      // 根据是否有自定义URL决定使用哪个处理方法
+      // 默认使用自定义URL (Modal.run)
       let llmResponseContent;
-      if (llmUrl) {
-        // 使用自定义URL处理
-        console.log(`Using custom LLM URL: ${llmUrl}`);
+      try {
         llmResponseContent = await LLMService.processWithCustomURL(input, systemPrompt, llmUrl, apiKey);
-      } else {
-        // 使用OpenAI处理
-        if (!openaiApiKey) {
-          console.error('No OpenAI API key available');
-          return NextResponse.json(
-            { success: false, message: 'OpenAI API key is not configured' },
-            { status: 500 }
-          );
+      } catch (customUrlError) {
+        // 如果自定义URL失败，并且有OpenAI API密钥，尝试使用OpenAI
+        console.error('Error with custom LLM:', customUrlError);
+        if (openaiApiKey) {
+          console.log('Falling back to OpenAI API');
+          llmResponseContent = await LLMService.processWithOpenAI(input, systemPrompt, openaiApiKey);
+        } else {
+          throw customUrlError; // 重新抛出错误
         }
-        llmResponseContent = await LLMService.processWithOpenAI(input, systemPrompt, openaiApiKey);
       }
       
       console.log(`LLM response content: ${llmResponseContent}`);
@@ -197,14 +201,39 @@ export async function POST(request: Request) {
       // 确保响应是有效的JSON
       let parsedResponse;
       try {
-        parsedResponse = JSON.parse(llmResponseContent);
+        // 尝试清理响应内容，删除可能影响JSON解析的字符
+        const cleanedResponse = llmResponseContent
+          .replace(/^```json/, '') // 删除可能的Markdown JSON代码块开始
+          .replace(/```$/, '')     // 删除可能的Markdown代码块结束
+          .trim();                 // 删除前后空白
+          
+        console.log('Cleaned response for JSON parsing:', cleanedResponse);
+        parsedResponse = JSON.parse(cleanedResponse);
       } catch (parseError) {
         console.error('Failed to parse LLM response as JSON:', parseError);
         console.error('Raw response:', llmResponseContent);
-        return NextResponse.json(
-          { success: false, message: 'Invalid LLM response format: not valid JSON' },
-          { status: 500 }
-        );
+        
+        // 尝试使用正则表达式提取JSON部分
+        try {
+          const jsonMatch = llmResponseContent.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const extractedJson = jsonMatch[0];
+            console.log('Extracted JSON using regex:', extractedJson);
+            parsedResponse = JSON.parse(extractedJson);
+          } else {
+            throw new Error('No JSON object found in response');
+          }
+        } catch (regexError) {
+          // 如果仍然无法解析，返回错误
+          return NextResponse.json(
+            { 
+              success: false, 
+              message: 'Invalid LLM response format: not valid JSON', 
+              rawResponse: llmResponseContent 
+            },
+            { status: 500 }
+          );
+        }
       }
       
       // Check if the response contains an error
@@ -218,7 +247,11 @@ export async function POST(request: Request) {
       // Validate the function and parameters
       if (!parsedResponse.function) {
         return NextResponse.json(
-          { success: false, message: 'Missing function in response' },
+          { 
+            success: false, 
+            message: 'Missing function in response',
+            rawResponse: parsedResponse
+          },
           { status: 400 }
         );
       }
@@ -227,7 +260,11 @@ export async function POST(request: Request) {
       const validFunctions = ['swap', 'addLiquidity', 'removeLiquidity'];
       if (!validFunctions.includes(parsedResponse.function)) {
         return NextResponse.json(
-          { success: false, message: `Invalid function: ${parsedResponse.function}` },
+          { 
+            success: false, 
+            message: `Invalid function: ${parsedResponse.function}`,
+            rawResponse: parsedResponse
+          },
           { status: 400 }
         );
       }
@@ -235,7 +272,11 @@ export async function POST(request: Request) {
       // Check if parameters exist
       if (!parsedResponse.parameters) {
         return NextResponse.json(
-          { success: false, message: 'Missing parameters in response' },
+          { 
+            success: false, 
+            message: 'Missing parameters in response',
+            rawResponse: parsedResponse
+          },
           { status: 400 }
         );
       }
