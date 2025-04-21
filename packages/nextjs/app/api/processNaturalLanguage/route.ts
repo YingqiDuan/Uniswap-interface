@@ -54,7 +54,8 @@ class LLMService {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          model: "Meta-Llama-3.1-8B-Instruct-quantized.w4a16", // 使用示例中的模型名称
+          
+          model: "neuralmagic/Meta-Llama-3.1-8B-Instruct-quantized.w4a16",
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: input }
